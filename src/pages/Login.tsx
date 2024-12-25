@@ -2,7 +2,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithRedirect,
+  signInWithPopup,
   onAuthStateChanged
 } from "firebase/auth";
 import { useState, useEffect } from "react";
@@ -51,7 +51,7 @@ const Login: React.FC = () => {
   const handleGoogleLogin = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
     event.preventDefault();
     try {
-      await signInWithRedirect(auth, provider);
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       setError(error.message);
       console.error("Google Login Error:", error.code, error.message);
@@ -60,7 +60,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
+      if (user) {
         navigate("/editor");
       }
     });
