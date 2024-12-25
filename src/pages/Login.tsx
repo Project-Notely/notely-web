@@ -1,7 +1,9 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithRedirect,
+  onAuthStateChanged
 } from "firebase/auth";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +14,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const provider = new GoogleAuthProvider();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +47,16 @@ const Login: React.FC = () => {
       console.error("Login Error:", error.code, error.message);
     }
   };
+
+  const handleGoogleLogin = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+    event.preventDefault();
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+      setError(error.message);
+      console.error("Google Login Error:", error.code, error.message);
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -103,6 +116,9 @@ const Login: React.FC = () => {
           <button type="submit">Login</button>
           <button type="button" onClick={handleSignUp}>
             Sign Up
+          </button>
+          <button type="button" onClick={handleGoogleLogin}>
+            <img src="google-icon.png" alt="Google Login" />
           </button>
         </div>
       </form>
