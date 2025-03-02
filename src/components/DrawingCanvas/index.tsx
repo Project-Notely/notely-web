@@ -7,11 +7,10 @@ const DrawingCanvas: React.FC = () => {
     const appRef = useRef<Application | null>(null);
     const graphicsRef = useRef<Graphics | null>(null);
     const { addStroke } = useDrawingStore();
-    
-    // Track container dimensions
+
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-    // Update dimensions when window resizes
+    // update dimensions when window resizes
     useEffect(() => {
         const updateDimensions = () => {
             if (canvasRef.current) {
@@ -60,10 +59,14 @@ const DrawingCanvas: React.FC = () => {
                 console.log('PIXI app initialized with size:', containerWidth, 'x', containerHeight);
                 appRef.current = app;
                 
-                // Create graphics object
-                const graphics = new Graphics();
-                graphicsRef.current = graphics;
-                app.stage.addChild(graphics);
+                // Create graphics object for persistent strokes
+                const persistentGraphics = new Graphics();
+                app.stage.addChild(persistentGraphics);
+                
+                // Create graphics object for current stroke
+                const currentStrokeGraphics = new Graphics();
+                graphicsRef.current = currentStrokeGraphics;
+                app.stage.addChild(currentStrokeGraphics);
                 
                 if (canvasRef.current) {
                     console.log('Appending canvas to DOM');
@@ -95,16 +98,14 @@ const DrawingCanvas: React.FC = () => {
                     const pressure = event.pressure !== undefined ? event.pressure : 1;
                     currentStroke.push({ x, y, pressure });
                     
-                    // Clear previous drawing
-                    graphics.clear();
+                    // Clear only the current stroke graphics, not the persistent strokes
+                    currentStrokeGraphics.clear();
                     
-                    // Draw a dot to mark the start point
-                    graphics.circle(x, y, 5);
-                    graphics.fill({ color: 0x0000ff });
+                    // No blue dot at the beginning
                 };
 
                 const draw = (event: PointerEvent) => {
-                    if (!isDrawing || !graphicsRef.current) return;
+                    if (!isDrawing) return;
                     
                     // Get pointer position directly from the event
                     const x = event.offsetX;
@@ -115,26 +116,46 @@ const DrawingCanvas: React.FC = () => {
                     
                     if (currentStroke.length < 2) return;
                     
-                    const lastPoint = currentStroke[currentStroke.length - 2];
+                    // Clear and redraw the current stroke
+                    currentStrokeGraphics.clear();
                     
-                    // Draw line from last point to current point
-                    graphics.setStrokeStyle({
+                    // Draw the current stroke path
+                    currentStrokeGraphics.setStrokeStyle({
                         width: 4,
                         color: 0x000000,
                         alpha: 1
                     });
                     
-                    graphics.moveTo(lastPoint.x, lastPoint.y);
-                    graphics.lineTo(x, y);
-                    graphics.stroke();
+                    currentStrokeGraphics.moveTo(currentStroke[0].x, currentStroke[0].y);
+                    for (let i = 1; i < currentStroke.length; i++) {
+                        currentStrokeGraphics.lineTo(currentStroke[i].x, currentStroke[i].y);
+                    }
+                    currentStrokeGraphics.stroke();
                 };
 
                 const stopDrawing = () => {
-                    if (isDrawing) {
+                    if (isDrawing && currentStroke.length > 0) {
                         console.log('Stopping drawing, stroke points:', currentStroke.length);
-                        if (currentStroke.length > 0) {
-                            addStroke([...currentStroke]);
+                        
+                        // Add stroke to store
+                        addStroke([...currentStroke]);
+                        
+                        // Transfer the current stroke to persistent graphics
+                        persistentGraphics.setStrokeStyle({
+                            width: 4,
+                            color: 0x000000,
+                            alpha: 1
+                        });
+                        
+                        persistentGraphics.moveTo(currentStroke[0].x, currentStroke[0].y);
+                        for (let i = 1; i < currentStroke.length; i++) {
+                            persistentGraphics.lineTo(currentStroke[i].x, currentStroke[i].y);
                         }
+                        persistentGraphics.stroke();
+                        
+                        // Clear the current stroke graphics
+                        currentStrokeGraphics.clear();
+                        
                         isDrawing = false;
                     }
                 };
