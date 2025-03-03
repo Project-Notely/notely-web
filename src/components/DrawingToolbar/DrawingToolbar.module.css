@@ -1,0 +1,123 @@
+.drawing-toolbar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border-bottom: 1px solid #ddd;
+    z-index: 100;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .toolbar-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .title-input {
+    flex: 1;
+    max-width: 300px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .drawing-toolbar button {
+    padding: 8px 16px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+  }
+  
+  .drawing-toolbar button:hover {
+    background-color: #357ab8;
+  }
+  
+  .drawing-toolbar button:disabled {
+    background-color: #a0c3e8;
+    cursor: not-allowed;
+  }
+  
+  .drawing-toolbar button.danger {
+    background-color: #e74c3c;
+  }
+  
+  .drawing-toolbar button.danger:hover {
+    background-color: #c0392b;
+  }
+  
+  .recent-drawings {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .recent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .recent-header h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+  
+  .close-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+    padding: 0 5px;
+  }
+  
+  .drawings-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .drawings-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+  
+  .drawings-list li:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .drawing-title {
+    font-weight: 500;
+  }
+  
+  .drawing-date {
+    color: #888;
+    font-size: 14px;
+  }
+  
