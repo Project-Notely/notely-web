@@ -2,6 +2,51 @@
 
 This document outlines the development tools and configurations set up for this project.
 
+## 🚀 Runtime: Bun
+
+**This project uses Bun as its JavaScript runtime, not Node.js!**
+
+### Prerequisites
+
+1. **Install Bun** (if not already installed):
+
+   ```bash
+   # macOS/Linux
+   curl -fsSL https://bun.sh/install | bash
+
+   # Windows
+   powershell -c "irm bun.sh/install.ps1 | iex"
+   ```
+
+2. **Verify installation**:
+   ```bash
+   bun --version
+   # Should show: 1.2.18
+   ```
+
+### Version Management
+
+This project uses **Bun 1.2.18** (pinned in `.bun-version` file).
+
+**For automatic version switching:**
+
+- If you have multiple Bun versions, Bun will automatically use the version specified in `.bun-version`
+- To manually switch: `bun use 1.2.18`
+
+### Initial Setup
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd notely-web
+
+# Install dependencies (uses bun.lock for exact versions)
+bun install
+
+# Start development server
+bun dev
+```
+
 ## 🛠️ Tools Overview
 
 ### Code Quality Tools
@@ -30,6 +75,15 @@ bun run lint:fix        # Run ESLint with auto-fix
 bun run format          # Format all files with Prettier
 bun run format:check    # Check if files are formatted
 bun run type-check      # Run TypeScript type checking
+```
+
+### Package Management
+
+```bash
+bun install             # Install dependencies
+bun add <package>       # Add a package
+bun remove <package>    # Remove a package
+bun update             # Update dependencies
 ```
 
 ## 🎯 Git Hooks
@@ -62,155 +116,140 @@ Enforces conventional commit format:
 
 ## ⚙️ Configuration Files
 
-### ESLint Configuration
+### Core Configuration
 
-- **File**: `eslint.config.js`
-- **Features**:
-  - TypeScript support
-  - React hooks rules
-  - Prettier integration
-  - Custom rules for unused variables
-  - Console warnings
+- `.bun-version` - Pins Bun version for consistency
+- `bun.lock` - Lockfile for exact dependency versions
+- `package.json` - Project dependencies and scripts
+- `tsconfig.json` - TypeScript configuration
+- `vite.config.ts` - Vite build configuration
 
-### Prettier Configuration
+### Code Quality
 
-- **File**: `.prettierrc`
-- **Settings**:
-  - Single quotes
-  - 2 spaces indentation
-  - Trailing commas (ES5)
-  - Line width: 80 characters
-  - Unix line endings
+- `.prettierrc` - Prettier formatting rules
+- `.prettierignore` - Files to exclude from formatting
+- `eslint.config.js` - ESLint linting rules
+- `.commitlintrc.json` - Commit message format rules
 
-### TypeScript Configuration
+### Editor Setup
 
-- **Files**: `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`
-- **Features**:
-  - Strict mode enabled
-  - Modern ES target
-  - Path mapping support
+- `.vscode/settings.json` - VS Code workspace settings
+- `.vscode/extensions.json` - Recommended extensions
+- `.editorconfig` - Editor consistency settings
 
-### VSCode Settings
+### Git Hooks
 
-- **File**: `.vscode/settings.json`
-- **Features**:
-  - Format on save
-  - ESLint auto-fix
-  - Organize imports
-  - Proper TypeScript settings
+- `.husky/pre-commit` - Run lint-staged before commits
+- `.husky/commit-msg` - Validate commit message format
+- `.husky/pre-push` - Run type checking and linting before push
 
-## 🔧 Editor Setup
+## 🎯 Git Workflow
 
-### Recommended VSCode Extensions
+### Pre-commit Hooks
 
-The project includes extension recommendations in `.vscode/extensions.json`:
+When you commit, the following will run automatically:
 
-- **Prettier**: Code formatting
-- **ESLint**: Linting
-- **TypeScript**: Enhanced TypeScript support
-- **Tailwind CSS**: CSS utility classes (if needed)
-- **Auto Rename Tag**: HTML/JSX tag renaming
-- **Path Intellisense**: File path autocompletion
+- **lint-staged**: Runs ESLint and Prettier on staged files
+- **commit-msg**: Validates commit message format
 
-### EditorConfig
+### Pre-push Hooks
 
-- **File**: `.editorconfig`
-- **Ensures**: Consistent formatting across different editors
-- **Settings**: 2-space indentation, LF line endings, UTF-8 encoding
+When you push, the following will run:
 
-## 📋 Workflow
+- **type-check**: TypeScript type checking
+- **lint**: ESLint on all files
+- **format:check**: Prettier format validation
 
-### Daily Development
+### Commit Message Format
 
-1. Work on your feature/fix
-2. Stage your changes: `git add .`
-3. Commit: `git commit -m "feat: add new feature"`
-   - Pre-commit hook runs automatically
-   - Fixes formatting and linting issues
-4. Push: `git push`
-   - Pre-push hook runs automatically
-   - Ensures code quality before pushing
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
-### Manual Quality Checks
+```
+type(scope): description
+
+Types: feat, fix, docs, style, refactor, test, chore, ci, build
+Examples:
+  feat: add user authentication
+  fix: resolve navbar responsive issue
+  docs: update installation guide
+```
+
+## 📱 VS Code Setup
+
+### Required Extensions
+
+Install these extensions for the best development experience:
+
+- **Prettier - Code formatter**
+- **ESLint**
+- **TypeScript and JavaScript Language Features**
+- **Tailwind CSS IntelliSense**
+
+### Auto-setup
+
+If you open this project in VS Code, it will prompt you to install recommended extensions automatically.
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"bun: command not found"**
 
 ```bash
-# Run all quality checks manually
-bun run type-check
-bun run lint
-bun run format:check
+# Restart your terminal after installing Bun
+# Or manually add to your shell profile:
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or ~/.zshrc
+```
 
-# Fix issues
+**Wrong Bun version**
+
+```bash
+# Check current version
+bun --version
+
+# Should show 1.2.18
+# If not, the .bun-version file should auto-switch
+# Or manually: bun use 1.2.18
+```
+
+**Dependencies not installing**
+
+```bash
+# Clear cache and reinstall
+rm -rf node_modules
+rm bun.lockb
+bun install
+```
+
+**Linting errors**
+
+```bash
+# Fix auto-fixable issues
 bun run lint:fix
+
+# Format code
 bun run format
 ```
 
-## 🚨 Troubleshooting
+## 🚀 CI/CD
 
-### ESLint Issues
+The project uses GitHub Actions for continuous integration:
 
-- Run `bun run lint:fix` to auto-fix many issues
-- Check `.eslintignore` if certain files should be excluded
-- Disable specific rules with `// eslint-disable-next-line rule-name`
+- **Code Quality**: ESLint, Prettier, TypeScript checks
+- **Security**: Dependency vulnerability scanning
+- **Deployment**: Automatic deployment to GitHub Pages
+- **Previews**: PR preview deployments
 
-### Prettier Issues
+All CI/CD processes use **Bun 1.2.18** to match the development environment.
 
-- Run `bun run format` to format all files
-- Check `.prettierignore` for excluded files
-- Ensure VSCode is using the project's Prettier settings
+## 📚 Additional Resources
 
-### TypeScript Issues
-
-- Run `bun run type-check` to see all type errors
-- Check `tsconfig.json` for configuration issues
-- Ensure all dependencies have proper type definitions
-
-### Git Hook Issues
-
-- Check hook file permissions: `chmod +x .husky/*`
-- Verify Husky installation: `bunx husky --version`
-- Test hooks manually: `bunx husky run .husky/pre-commit`
-
-## 📝 Best Practices
-
-### Code Style
-
-- Use single quotes for strings
-- Use 2 spaces for indentation
-- Add trailing commas where possible
-- Keep line length under 80 characters
-
-### TypeScript
-
-- Use explicit types for function parameters
-- Avoid `any` type (ESLint will warn)
-- Use underscore prefix for unused variables: `_unusedParam`
-
-### Git Commits
-
-- Follow conventional commit format
-- Keep descriptions concise but descriptive
-- Use imperative mood: "add" not "added"
-
-### Code Organization
-
-- Use relative imports for local files
-- Group imports: external libraries first, then local files
-- Use descriptive variable and function names
-- Add comments for complex logic
-
-## 🔄 Updating Tools
-
-To update all development dependencies:
-
-```bash
-bun update
-```
-
-To update specific tools:
-
-```bash
-bun update prettier eslint typescript husky lint-staged
-```
+- [Bun Documentation](https://bun.sh/docs)
+- [Vite Documentation](https://vitejs.dev/)
+- [TypeScript Documentation](https://www.typescriptlang.org/)
+- [React Documentation](https://react.dev/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/)
 
 ---
 
