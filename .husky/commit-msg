@@ -1,5 +1,4 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 
 # Check commit message format
 # This enforces conventional commits format: type(scope): description
@@ -16,4 +15,4 @@ if ! head -1 "$1" | grep -qE "$commit_regex"; then
   echo "  fix: resolve navbar responsive issue"
   echo "  docs: update installation guide"
   exit 1
-fi 
+fi
