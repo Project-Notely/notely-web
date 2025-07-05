@@ -6,9 +6,9 @@ This guide covers how to use Tailwind CSS effectively in your Notely Web project
 
 ### Core Setup
 
-- **Tailwind CSS 4.1.11** - Latest version with modern features
-- **PostCSS** - CSS processing with autoprefixer
-- **Custom Configuration** - Optimized for React and TypeScript
+- **Tailwind CSS v4.1.11** - Latest version with Vite plugin integration
+- **@tailwindcss/vite** - Official Vite plugin for optimal performance
+- **No PostCSS Configuration** - Simplified setup with direct Vite integration
 - **VS Code Integration** - IntelliSense and auto-completion
 
 ### Custom Design System
@@ -311,3 +311,79 @@ theme: {
 - `lg` = 1024px
 - `xl` = 1280px
 - `2xl` = 1536px
+
+## 🔄 Tailwind CSS v4 Migration
+
+This project uses Tailwind CSS v4 with the new Vite plugin architecture for improved performance and simplified setup.
+
+### Installation (v4)
+
+```bash
+# Install Tailwind CSS v4 with Vite plugin
+bun add -d tailwindcss @tailwindcss/vite
+```
+
+### Configuration
+
+**vite.config.ts**
+
+```typescript
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+});
+```
+
+**src/index.css**
+
+```css
+@import "tailwindcss";
+
+@layer base {
+  /* Your base styles */
+}
+
+@layer components {
+  /* Your component styles */
+}
+
+@layer utilities {
+  /* Your utility styles */
+}
+```
+
+### Key Changes from v3 to v4
+
+1. **Simplified Installation**: No need for PostCSS or autoprefixer
+2. **Vite Plugin**: Direct integration with Vite for better performance
+3. **CSS Import**: Use `@import "tailwindcss"` instead of three separate directives
+4. **Optional Config**: No `tailwind.config.js` required for basic setups
+5. **Faster Builds**: Improved performance with native Vite integration
+
+### Migration Steps
+
+1. Remove old dependencies:
+
+   ```bash
+   bun remove postcss autoprefixer
+   ```
+
+2. Install v4 dependencies:
+
+   ```bash
+   bun add -d @tailwindcss/vite
+   ```
+
+3. Update Vite config to use the plugin
+4. Replace CSS directives with single import
+5. Remove `tailwind.config.js` and `postcss.config.js` (if not needed)
+
+### Benefits of v4
+
+- **Performance**: Faster builds and hot reload
+- **Simplicity**: Fewer configuration files
+- **Modern**: Built for modern bundlers like Vite
+- **Reliability**: Better error handling and debugging
