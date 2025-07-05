@@ -1,0 +1,13 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running type check..."
+bun run type-check
+
+echo "Running linting..."
+bun run lint
+
+echo "Checking prettier formatting..."
+bun run format:check
+
+echo "All checks passed! 🎉" 
