@@ -15,7 +15,6 @@ This document explains all the GitHub Actions workflows and automation set up fo
 
 #### Quality Checks
 
-- **Matrix Strategy**: Tests on Node.js 20 and 22
 - **Steps**:
   - Code formatting check with Prettier
   - ESLint linting
