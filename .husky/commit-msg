@@ -1,18 +1,4 @@
 #!/bin/sh
 
-# Check commit message format
-# This enforces conventional commits format: type(scope): description
-# Examples: feat: add new feature, fix: resolve bug, docs: update readme
-
-commit_regex='^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .{1,50}'
-
-if ! head -1 "$1" | grep -qE "$commit_regex"; then
-  echo "Invalid commit message format."
-  echo "Expected format: type(scope): description"
-  echo "Types: feat, fix, docs, style, refactor, test, chore"
-  echo "Examples:"
-  echo "  feat: add user authentication"
-  echo "  fix: resolve navbar responsive issue"
-  echo "  docs: update installation guide"
-  exit 1
-fi
+# Use commitlint to validate commit message format
+npx commitlint --edit "$1"

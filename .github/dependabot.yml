@@ -1,0 +1,77 @@
+version: 2
+
+updates:
+  # Enable version updates for Bun/npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "@me" # Replace with your GitHub username
+    assignees:
+      - "@me" # Replace with your GitHub username
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "automated"
+    groups:
+      # Group all minor and patch updates together
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group major version updates separately
+      major-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+      # Group ESLint related packages
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@typescript-eslint/*"
+      # Group TypeScript related packages
+      typescript:
+        patterns:
+          - "typescript*"
+          - "@types/*"
+      # Group React related packages
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      # Group Vite and build tools
+      build-tools:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "rollup*"
+          - "esbuild*"
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "@me" # Replace with your GitHub username
+    assignees:
+      - "@me" # Replace with your GitHub username
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "github-actions"
+      - "automated"
