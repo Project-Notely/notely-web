@@ -1,9 +1,5 @@
 import type { DrawingData, Stroke } from "@/models/types";
 
-// Mock API base URL
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api";
-
 // Simulate network delay for realistic API behavior
 const simulateNetworkDelay = (ms: number = 500): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));

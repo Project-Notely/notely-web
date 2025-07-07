@@ -311,7 +311,7 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
         setIsSaving(false);
       }
     },
-    [updateStatistics]
+    []
   );
 
   return {
