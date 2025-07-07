@@ -1,3 +1,5 @@
+import type { Point, StrokeStyle } from "@/models/types";
+import { PixiDrawingService } from "@/services/pixiDrawingService";
 import React, {
   useCallback,
   useEffect,
@@ -5,8 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { PixiDrawingService } from "../services/pixiDrawingService";
-import type { Point, StrokeStyle } from "../utils/types";
 
 const SimpleDrawingCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

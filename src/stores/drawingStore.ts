@@ -1,12 +1,12 @@
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
-import {
+import type {
   DrawingData,
   DrawingState,
   DrawingTool,
   Point,
   Stroke,
-} from "../utils/types";
+} from "@/models/types";
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 // Default tool
 const defaultTool: DrawingTool = {

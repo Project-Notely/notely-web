@@ -1,3 +1,9 @@
+import type {
+  PixiDrawingServiceConfig,
+  Point,
+  Stroke,
+  StrokeStyle,
+} from "@/models/types";
 import {
   Application,
   Container,
@@ -6,12 +12,6 @@ import {
   type LineCap,
   type LineJoin,
 } from "pixi.js";
-import type {
-  PixiDrawingServiceConfig,
-  Point,
-  Stroke,
-  StrokeStyle,
-} from "../utils/types";
 
 export class PixiDrawingService {
   private app: Application;

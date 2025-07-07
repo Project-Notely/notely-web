@@ -1,10 +1,11 @@
 import js from "@eslint/js";
-import globals from "globals";
+import prettierConfig from "eslint-config-prettier";
+import importPlugin from "eslint-plugin-import";
+import prettier from "eslint-plugin-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import globals from "globals";
 import tseslint from "typescript-eslint";
-import prettier from "eslint-plugin-prettier";
-import prettierConfig from "eslint-config-prettier";
 
 export default tseslint.config([
   {
@@ -21,6 +22,7 @@ export default tseslint.config([
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
       prettier,
+      import: importPlugin,
     },
     languageOptions: {
       ecmaVersion: 2020,
@@ -28,6 +30,14 @@ export default tseslint.config([
       parserOptions: {
         ecmaFeatures: {
           jsx: true,
+        },
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          project: "./tsconfig.app.json",
         },
       },
     },
@@ -39,7 +49,7 @@ export default tseslint.config([
       ],
       "prettier/prettier": "error",
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
@@ -49,6 +59,10 @@ export default tseslint.config([
       "@typescript-eslint/no-explicit-any": "error",
       "prefer-const": "error",
       "no-console": "off",
+
+      // Import rules - disabled problematic rules that don't work with path mapping
+      "import/prefer-default-export": "off",
+      "import/no-unresolved": "off", // TypeScript handles this
     },
   },
 ]);

@@ -94,14 +94,3 @@ export interface PixiDrawingServiceConfig {
   antialias: boolean;
   resolution: number;
 }
-
-export interface TouchEvent extends React.TouchEvent<HTMLCanvasElement> {
-  touches: TouchList;
-  changedTouches: TouchList;
-}
-
-export interface MouseEvent extends React.MouseEvent<HTMLCanvasElement> {
-  clientX: number;
-  clientY: number;
-  buttons: number;
-}

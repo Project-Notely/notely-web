@@ -1,22 +1,21 @@
-import React from "react";
-import SimpleDrawingCanvas from "./components/SimpleDrawingCanvas";
+import { theme } from "@/styles/theme";
+import { CssBaseline } from "@mui/material";
+import { ThemeProvider } from "@mui/material/styles";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-const App: React.FC = () => {
+// Pages
+import Homepage from "@/pages/Homepage";
+
+const App = () => {
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        margin: 0,
-        padding: 0,
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#f0f0f0",
-      }}
-    >
-      <SimpleDrawingCanvas />
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <BrowserRouter>
+        <Routes>
+          <Route path='/' element={<Homepage />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 };
 
