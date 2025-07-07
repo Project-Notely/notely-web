@@ -263,7 +263,7 @@ export const useDrawingStore = create<DrawingState>()(
     }),
     {
       name: "drawing-store",
-      enabled: process.env.NODE_ENV === "development",
+      enabled: import.meta.env.DEV,
     }
   )
 );
