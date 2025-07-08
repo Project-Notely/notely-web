@@ -1,3 +1,4 @@
+import { useSaveDrawing } from "@/hooks/useDrawingQueries";
 import type { Point, StrokeStyle } from "@/models/types";
 import { PixiDrawingService } from "@/services/pixiDrawingService";
 import { StrokeCollectionService } from "@/services/strokeCollectionService";
@@ -36,8 +37,10 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
     drawingDuration: 0,
     averageStrokeLength: 0,
   });
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // React Query hooks
+  const saveDrawingMutation = useSaveDrawing();
 
   // Initialize services
   useEffect(() => {
@@ -241,33 +244,41 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
     async (title?: string, description?: string): Promise<boolean> => {
       if (!strokeCollectionRef.current) return false;
 
-      setIsSaving(true);
       setError(null);
 
       try {
-        const success = await strokeCollectionRef.current.saveCompleteDrawing(
-          { width: config.width, height: config.height },
+        const drawingData = strokeCollectionRef.current.exportAsDrawingData({
+          width: config.width,
+          height: config.height,
+        });
+        const result = await saveDrawingMutation.mutateAsync({
+          drawing: drawingData,
+          userId: config.userId,
           title,
-          description
-        );
+          description,
+        });
 
-        if (success) {
+        if (result.success) {
           updateStatistics();
+          return true;
         } else {
-          setError("Failed to save drawing");
+          setError(result.error || "Failed to save drawing");
+          return false;
         }
-
-        return success;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         setError(errorMessage);
         return false;
-      } finally {
-        setIsSaving(false);
       }
     },
-    [config.width, config.height, updateStatistics]
+    [
+      config.width,
+      config.height,
+      config.userId,
+      updateStatistics,
+      saveDrawingMutation,
+    ]
   );
 
   // Clear canvas
@@ -284,7 +295,6 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
     async (drawingId: string): Promise<boolean> => {
       if (!strokeCollectionRef.current || !pixiServiceRef.current) return false;
 
-      setIsSaving(true);
       setError(null);
 
       try {
@@ -307,8 +317,6 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
           error instanceof Error ? error.message : "Unknown error";
         setError(errorMessage);
         return false;
-      } finally {
-        setIsSaving(false);
       }
     },
     []
@@ -321,7 +329,7 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
     // State
     isInitialized,
     statistics,
-    isSaving,
+    isSaving: saveDrawingMutation.isPending,
     error,
     isDrawing: isDrawingRef.current,
 

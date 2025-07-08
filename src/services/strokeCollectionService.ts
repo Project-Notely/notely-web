@@ -34,7 +34,7 @@ export class StrokeCollectionService {
    * Generate a unique stroke ID
    */
   private generateStrokeId(): string {
-    return `stroke_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `stroke_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**

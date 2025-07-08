@@ -223,17 +223,7 @@ const EnhancedDrawingCanvas: React.FC<EnhancedDrawingCanvasProps> = ({
           width: "100%",
         }}
       >
-        <h1
-          style={{
-            fontSize: "1.5rem",
-            fontWeight: "700",
-            color: "#1f2937",
-            marginBottom: "1rem",
-            textAlign: "center",
-          }}
-        >
-          Enhanced Drawing Canvas
-        </h1>
+        <h1 className='text-2xl font-bold'>Enhanced Drawing Canvas</h1>
 
         {/* Debug Info */}
         <div
