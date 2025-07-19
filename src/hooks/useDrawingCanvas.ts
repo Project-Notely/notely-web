@@ -1,5 +1,6 @@
 import { useSaveDrawing } from "@/hooks/useDrawingQueries";
 import type { Point, StrokeStyle } from "@/models/types";
+import { drawingApiService } from "@/services/api/drawingApiService";
 import { PixiDrawingService } from "@/services/pixiDrawingService";
 import { StrokeCollectionService } from "@/services/strokeCollectionService";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -242,7 +243,15 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
   // Save drawing
   const saveDrawing = useCallback(
     async (title?: string, description?: string): Promise<boolean> => {
-      if (!strokeCollectionRef.current) return false;
+      console.log("🚀 [SAVE-DRAWING] Starting save process...", {
+        title,
+        description,
+      });
+
+      if (!strokeCollectionRef.current) {
+        console.error("❌ [SAVE-DRAWING] No stroke collection service");
+        return false;
+      }
 
       setError(null);
 
@@ -251,6 +260,13 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
           width: config.width,
           height: config.height,
         });
+
+        console.log("📊 [SAVE-DRAWING] Drawing data prepared:", {
+          strokeCount: drawingData.strokes.length,
+          dimensions: drawingData.dimensions,
+          userId: config.userId,
+        });
+
         const result = await saveDrawingMutation.mutateAsync({
           drawing: drawingData,
           userId: config.userId,
@@ -258,14 +274,19 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
           description,
         });
 
+        console.log("✅ [SAVE-DRAWING] API response:", result);
+
         if (result.success) {
           updateStatistics();
+          console.log("✅ [SAVE-DRAWING] Save successful!");
           return true;
         } else {
+          console.error("❌ [SAVE-DRAWING] Save failed:", result.error);
           setError(result.error || "Failed to save drawing");
           return false;
         }
       } catch (error) {
+        console.error("❌ [SAVE-DRAWING] Exception during save:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         setError(errorMessage);
@@ -293,33 +314,40 @@ export const useDrawingCanvas = (config: DrawingCanvasConfig) => {
   // Load drawing
   const loadDrawing = useCallback(
     async (drawingId: string): Promise<boolean> => {
-      if (!strokeCollectionRef.current || !pixiServiceRef.current) return false;
+      console.log("🚀 [LOAD-DRAWING] Starting load process...", { drawingId });
+
+      if (!strokeCollectionRef.current || !pixiServiceRef.current) {
+        console.error("❌ [LOAD-DRAWING] Missing services");
+        return false;
+      }
 
       setError(null);
 
       try {
-        // This would load from your API service
-        // For now, we'll just simulate loading
-        console.log("📂 Loading drawing:", drawingId);
+        const response = await drawingApiService.loadDrawing(drawingId);
 
-        // You would implement the actual loading logic here
-        // const response = await drawingApiService.loadDrawing(drawingId);
-        // if (response.success) {
-        //   strokeCollectionRef.current.loadDrawingData(response.data.drawing);
-        //   pixiServiceRef.current.drawAllStrokes(response.data.drawing.strokes);
-        //   updateStatistics();
-        //   return true;
-        // }
+        console.log("📊 [LOAD-DRAWING] API response:", response);
 
-        return false;
+        if (response.success && response.data) {
+          strokeCollectionRef.current.loadDrawingData(response.data.drawing);
+          pixiServiceRef.current.drawAllStrokes(response.data.drawing.strokes);
+          updateStatistics();
+          console.log("✅ [LOAD-DRAWING] Load successful!");
+          return true;
+        } else {
+          console.error("❌ [LOAD-DRAWING] Load failed:", response.error);
+          setError(response.error || "Failed to load drawing");
+          return false;
+        }
       } catch (error) {
+        console.error("❌ [LOAD-DRAWING] Exception during load:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         setError(errorMessage);
         return false;
       }
     },
-    []
+    [updateStatistics]
   );
 
   return {

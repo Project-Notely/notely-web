@@ -40,7 +40,7 @@ export const useSaveDrawing = () => {
       title?: string;
       description?: string;
     }) => drawingApiService.saveDrawing(request),
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       // Invalidate user drawings to refetch the list
       if (variables.userId) {
         queryClient.invalidateQueries({

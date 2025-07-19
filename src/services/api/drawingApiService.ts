@@ -1,9 +1,5 @@
 import type { DrawingData, Stroke } from "@/models/types";
-
-// Simulate network delay for realistic API behavior
-const simulateNetworkDelay = (ms: number = 500): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
+import { axiosInstance } from "./axiosInstance";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -49,6 +45,21 @@ export class DrawingApiService {
     return DrawingApiService.instance;
   }
 
+  private handleError(error: unknown): string {
+    if (error && typeof error === "object" && "response" in error) {
+      const axiosError = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      return (
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        "An error occurred"
+      );
+    }
+    return error instanceof Error ? error.message : "An unknown error occurred";
+  }
+
   /**
    * Save a complete drawing to the backend
    */
@@ -63,27 +74,21 @@ export class DrawingApiService {
         title: request.title,
       });
 
-      // Simulate network delay
-      await simulateNetworkDelay(800);
+      const response = await axiosInstance.post("/drawings", request);
 
-      // Mock API response
-      const mockResponse: ApiResponse<SaveDrawingResponse> = {
+      const apiResponse: ApiResponse<SaveDrawingResponse> = {
         success: true,
-        data: {
-          drawingId: `drawing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        data: response.data,
         message: "Drawing saved successfully",
       };
 
-      console.log("✅ Drawing saved successfully:", mockResponse.data);
-      return mockResponse;
-    } catch (error) {
+      console.log("✅ Drawing saved successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
       console.error("❌ Failed to save drawing:", error);
       return {
         success: false,
-        error: "Failed to save drawing",
+        error: this.handleError(error),
       };
     }
   }
@@ -101,25 +106,24 @@ export class DrawingApiService {
         drawingId,
       });
 
-      // Simulate network delay
-      await simulateNetworkDelay(300);
+      const response = await axiosInstance.post("/drawings/strokes", {
+        strokes,
+        drawingId,
+      });
 
-      // Mock API response
-      const mockResponse: ApiResponse<{ savedStrokeIds: string[] }> = {
+      const apiResponse: ApiResponse<{ savedStrokeIds: string[] }> = {
         success: true,
-        data: {
-          savedStrokeIds: strokes.map(stroke => stroke.id),
-        },
+        data: response.data,
         message: `${strokes.length} strokes saved successfully`,
       };
 
-      console.log("✅ Strokes saved successfully:", mockResponse.data);
-      return mockResponse;
-    } catch (error) {
+      console.log("✅ Strokes saved successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
       console.error("❌ Failed to save strokes:", error);
       return {
         success: false,
-        error: "Failed to save strokes",
+        error: this.handleError(error),
       };
     }
   }
@@ -133,61 +137,21 @@ export class DrawingApiService {
     try {
       console.log("🚀 Loading drawing from backend...", { drawingId });
 
-      // Simulate network delay
-      await simulateNetworkDelay(600);
+      const response = await axiosInstance.get(`/drawings/${drawingId}`);
 
-      // Mock drawing data
-      const mockDrawing: DrawingData = {
-        strokes: [
-          {
-            id: "mock_stroke_1",
-            points: [
-              { x: 100, y: 100, timestamp: Date.now() },
-              { x: 150, y: 150, timestamp: Date.now() + 100 },
-              { x: 200, y: 100, timestamp: Date.now() + 200 },
-            ],
-            style: {
-              color: "#000000",
-              thickness: 3,
-              opacity: 1,
-              lineCap: "round",
-              lineJoin: "round",
-            },
-            timestamp: Date.now(),
-            completed: true,
-          },
-        ],
-        dimensions: { width: 800, height: 600 },
-        metadata: {
-          created: Date.now(),
-          modified: Date.now(),
-          version: "2.0",
-        },
-      };
-
-      const mockResponse: ApiResponse<LoadDrawingResponse> = {
+      const apiResponse: ApiResponse<LoadDrawingResponse> = {
         success: true,
-        data: {
-          drawing: mockDrawing,
-          metadata: {
-            id: drawingId,
-            userId: "user_123",
-            title: "My Drawing",
-            description: "A sample drawing",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        },
+        data: response.data,
         message: "Drawing loaded successfully",
       };
 
-      console.log("✅ Drawing loaded successfully:", mockResponse.data);
-      return mockResponse;
-    } catch (error) {
+      console.log("✅ Drawing loaded successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
       console.error("❌ Failed to load drawing:", error);
       return {
         success: false,
-        error: "Failed to load drawing",
+        error: this.handleError(error),
       };
     }
   }
@@ -201,30 +165,27 @@ export class DrawingApiService {
     try {
       console.log("🚀 Deleting drawing from backend...", { drawingId });
 
-      // Simulate network delay
-      await simulateNetworkDelay(400);
+      const response = await axiosInstance.delete(`/drawings/${drawingId}`);
 
-      const mockResponse: ApiResponse<{ deletedId: string }> = {
+      const apiResponse: ApiResponse<{ deletedId: string }> = {
         success: true,
-        data: {
-          deletedId: drawingId,
-        },
+        data: response.data,
         message: "Drawing deleted successfully",
       };
 
-      console.log("✅ Drawing deleted successfully:", mockResponse.data);
-      return mockResponse;
-    } catch (error) {
+      console.log("✅ Drawing deleted successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
       console.error("❌ Failed to delete drawing:", error);
       return {
         success: false,
-        error: "Failed to delete drawing",
+        error: this.handleError(error),
       };
     }
   }
 
   /**
-   * Get list of user's drawings
+   * Get user's drawings with pagination
    */
   public async getUserDrawings(
     userId: string,
@@ -238,49 +199,150 @@ export class DrawingApiService {
         createdAt: string;
         thumbnail?: string;
       }>;
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
     }>
   > {
     try {
-      console.log("🚀 Loading user drawings...", { userId, page, limit });
+      console.log("🚀 Loading user drawings from backend...", {
+        userId,
+        page,
+        limit,
+      });
 
-      // Simulate network delay
-      await simulateNetworkDelay(500);
+      const response = await axiosInstance.get(`/users/${userId}/drawings`, {
+        params: { page, limit },
+      });
 
-      const mockResponse: ApiResponse<{
+      const apiResponse: ApiResponse<{
         drawings: Array<{
           id: string;
           title: string;
           createdAt: string;
           thumbnail?: string;
         }>;
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
       }> = {
         success: true,
-        data: {
-          drawings: [
-            {
-              id: "drawing_1",
-              title: "My First Drawing",
-              createdAt: new Date().toISOString(),
-              thumbnail:
-                "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Y5ZjlmOSIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VGh1bWJuYWlsPC90ZXh0Pjwvc3ZnPg==",
-            },
-            {
-              id: "drawing_2",
-              title: "Sketch #2",
-              createdAt: new Date(Date.now() - 86400000).toISOString(),
-            },
-          ],
-        },
+        data: response.data,
         message: "User drawings loaded successfully",
       };
 
-      console.log("✅ User drawings loaded successfully:", mockResponse.data);
-      return mockResponse;
-    } catch (error) {
+      console.log("✅ User drawings loaded successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
       console.error("❌ Failed to load user drawings:", error);
       return {
         success: false,
-        error: "Failed to load user drawings",
+        error: this.handleError(error),
+      };
+    }
+  }
+
+  /**
+   * Update drawing metadata
+   */
+  public async updateDrawing(
+    drawingId: string,
+    updates: {
+      title?: string;
+      description?: string;
+      isPublic?: boolean;
+    }
+  ): Promise<ApiResponse<{ updatedId: string }>> {
+    try {
+      console.log("🚀 Updating drawing metadata...", { drawingId, updates });
+
+      const response = await axiosInstance.patch(
+        `/drawings/${drawingId}`,
+        updates
+      );
+
+      const apiResponse: ApiResponse<{ updatedId: string }> = {
+        success: true,
+        data: response.data,
+        message: "Drawing updated successfully",
+      };
+
+      console.log("✅ Drawing updated successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
+      console.error("❌ Failed to update drawing:", error);
+      return {
+        success: false,
+        error: this.handleError(error),
+      };
+    }
+  }
+
+  /**
+   * Get public drawings (explore/browse)
+   */
+  public async getPublicDrawings(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<
+    ApiResponse<{
+      drawings: Array<{
+        id: string;
+        title: string;
+        createdAt: string;
+        thumbnail?: string;
+        userId: string;
+        username: string;
+      }>;
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>
+  > {
+    try {
+      console.log("🚀 Loading public drawings...", { page, limit });
+
+      const response = await axiosInstance.get("/drawings/public", {
+        params: { page, limit },
+      });
+
+      const apiResponse: ApiResponse<{
+        drawings: Array<{
+          id: string;
+          title: string;
+          createdAt: string;
+          thumbnail?: string;
+          userId: string;
+          username: string;
+        }>;
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        };
+      }> = {
+        success: true,
+        data: response.data,
+        message: "Public drawings loaded successfully",
+      };
+
+      console.log("✅ Public drawings loaded successfully:", apiResponse.data);
+      return apiResponse;
+    } catch (error: unknown) {
+      console.error("❌ Failed to load public drawings:", error);
+      return {
+        success: false,
+        error: this.handleError(error),
       };
     }
   }

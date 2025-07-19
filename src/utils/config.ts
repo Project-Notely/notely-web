@@ -7,7 +7,7 @@ const configSchema = z.object({
 const getConfig = () => {
   try {
     return configSchema.parse({
-      REACT_APP_API_BASE_URL: process.env.REACT_APP_API_BASE_URL,
+      REACT_APP_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     });
   } catch (error) {
     console.error("Invalid environment configuration:", error);
