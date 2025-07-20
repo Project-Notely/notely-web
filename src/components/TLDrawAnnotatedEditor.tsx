@@ -250,53 +250,32 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
         className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200'
         style={{ height: "600px" }}
       >
-        {/* Text Editor Layer - ALWAYS visible and ALWAYS interactive */}
+        {/* Text Editor Layer */}
         <div
-          className='absolute inset-0'
-          onClick={handleTextContainerClick}
+          className='simple-editor-wrapper'
           style={{
-            pointerEvents: "auto", // Always interactive
-            zIndex: 1,
+            position: "relative",
+            zIndex: isTextMode ? 20 : 1, // Higher z-index in text mode to be above TLDraw
             background: "white",
+            minHeight: "100%",
+            width: "100%",
+            padding: "16px", // Ensure clickable area
+            pointerEvents: "auto", // Always interactive
             border:
               process.env.NODE_ENV === "development" ? "2px solid red" : "none", // Debug border
           }}
+          onClick={e => {
+            console.log("🖱️ [TEXT-WRAPPER-CLICK] Text wrapper clicked:", {
+              mode,
+              zIndex: isTextMode ? 20 : 1,
+              pointerEvents: "auto",
+              target: e.target,
+              currentTarget: e.currentTarget,
+              timestamp: new Date().toISOString(),
+            });
+          }}
         >
-          <div
-            className='simple-editor-wrapper'
-            style={{
-              color: "black",
-              backgroundColor: "white",
-              height: "100%",
-              width: "100%",
-              padding: "16px",
-              overflow: "auto",
-              border:
-                process.env.NODE_ENV === "development"
-                  ? "2px solid blue"
-                  : "none", // Debug border
-              minHeight: "400px",
-            }}
-          >
-            <SimpleEditor />
-            {/* Debug indicator */}
-            {process.env.NODE_ENV === "development" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "4px",
-                  left: "4px",
-                  background: "red",
-                  color: "white",
-                  padding: "4px",
-                  fontSize: "12px",
-                  zIndex: 999,
-                }}
-              >
-                TEXT EDITOR HERE
-              </div>
-            )}
-          </div>
+          <SimpleEditor />
         </div>
 
         {/* TLDraw Layer - Always rendered for visibility */}
@@ -308,68 +287,38 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
             pointerEvents: isDrawingMode ? "auto" : "none", // Interactive only in draw mode
           }}
         >
-          <Tldraw
-            store={tldrawStore}
-            onMount={handleMount}
-            autoFocus={false} // Never auto-focus to avoid stealing focus
-            style={{
-              background: "rgba(0, 0, 0, 0)", // Completely transparent
-              backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
-              opacity: 1,
-            }}
-            components={{
-              // Hide UI elements for clean overlay
-              MainMenu: null,
-              QuickActions: null,
-              HelpMenu: null,
-              DebugMenu: null,
-              SharePanel: null,
-              MenuPanel: null,
-              TopPanel: null,
-              NavigationPanel: null,
-            }}
-          />
-        </div>
-
-        {/* Event Management Overlay - Only blocks events in text mode */}
-        {!isDrawingMode && (
           <div
-            className='absolute inset-0'
             style={{
-              zIndex: 15, // Above TLDraw
-              background: "transparent",
-              pointerEvents: "auto", // Capture all events in text mode
+              width: "100%",
+              height: "100%",
+              pointerEvents: isDrawingMode ? "auto" : "none",
             }}
-            onClick={e => {
-              console.log(
-                "🔄 [EVENT-BLOCK] Blocking TLDraw click, forwarding to text editor"
-              );
-
-              // Prevent TLDraw from getting the event
-              e.preventDefault();
-              e.stopPropagation();
-
-              // Forward click to text editor
-              const textEditor = containerRef.current?.querySelector(".tiptap");
-              if (textEditor) {
-                (textEditor as HTMLElement).focus();
-              }
-            }}
-            onMouseDown={e => {
-              // Block all mouse events that could trigger TLDraw
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onMouseMove={e => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onMouseUp={e => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-          />
-        )}
+            className={isTextMode ? "tldraw-disabled" : ""}
+          >
+            <Tldraw
+              store={tldrawStore}
+              onMount={handleMount}
+              autoFocus={false} // Never auto-focus to avoid stealing focus
+              style={{
+                background: "rgba(0, 0, 0, 0)", // Completely transparent
+                backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
+                opacity: 1,
+                pointerEvents: isDrawingMode ? "auto" : "none", // Disable TLDraw interactions in text mode
+              }}
+              components={{
+                // Hide UI elements for clean overlay
+                MainMenu: null,
+                QuickActions: null,
+                HelpMenu: null,
+                DebugMenu: null,
+                SharePanel: null,
+                MenuPanel: null,
+                TopPanel: null,
+                NavigationPanel: null,
+              }}
+            />
+          </div>
+        </div>
 
         {/* Debug indicators */}
         {process.env.NODE_ENV === "development" && (
@@ -390,14 +339,14 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
           </div>
         )}
 
-        {/* Debug indicator when TLDraw is not rendered */}
-        {!isDrawingMode && process.env.NODE_ENV === "development" && (
+        {/* Debug indicator for text editor z-index */}
+        {process.env.NODE_ENV === "development" && (
           <div
             style={{
               position: "absolute",
-              top: "24px",
+              top: "44px",
               right: "4px",
-              background: "blue",
+              background: "red",
               color: "white",
               padding: "4px",
               fontSize: "12px",
@@ -405,7 +354,26 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
               pointerEvents: "none",
             }}
           >
-            EVENT BLOCKER ACTIVE
+            TEXT Z-INDEX: {isTextMode ? 20 : 1}
+          </div>
+        )}
+
+        {/* Debug indicator for text editor clickability */}
+        {!isDrawingMode && process.env.NODE_ENV === "development" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "24px",
+              right: "4px",
+              background: "purple",
+              color: "white",
+              padding: "4px",
+              fontSize: "12px",
+              zIndex: 999,
+              pointerEvents: "none",
+            }}
+          >
+            TEXT EDITOR CLICKABLE
           </div>
         )}
 
