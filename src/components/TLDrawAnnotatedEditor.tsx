@@ -184,6 +184,19 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
     }
   }, [isTextMode]);
 
+  // Focus TLDraw when switching to draw mode
+  React.useEffect(() => {
+    if (isDrawingMode && editorRef.current) {
+      const timer = setTimeout(() => {
+        console.log("🎯 [AUTO-FOCUS] Focusing TLDraw on mode switch to draw");
+        // TLDraw should be ready to receive events now
+        editorRef.current?.updateInstanceState({ isToolLocked: false });
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isDrawingMode]);
+
   // Save drawing data
   const saveDrawing = useCallback(() => {
     if (!editorRef.current) return null;
@@ -286,57 +299,94 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
           </div>
         </div>
 
-        {/* TLDraw Overlay Layer - Only render when in drawing mode */}
-        {isDrawingMode && (
+        {/* TLDraw Layer - Always rendered for visibility */}
+        <div
+          className='absolute inset-0'
+          style={{
+            zIndex: 10,
+            background: "transparent",
+            pointerEvents: isDrawingMode ? "auto" : "none", // Interactive only in draw mode
+          }}
+        >
+          <Tldraw
+            store={tldrawStore}
+            onMount={handleMount}
+            autoFocus={false} // Never auto-focus to avoid stealing focus
+            style={{
+              background: "rgba(0, 0, 0, 0)", // Completely transparent
+              backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
+              opacity: 1,
+            }}
+            components={{
+              // Hide UI elements for clean overlay
+              MainMenu: null,
+              QuickActions: null,
+              HelpMenu: null,
+              DebugMenu: null,
+              SharePanel: null,
+              MenuPanel: null,
+              TopPanel: null,
+              NavigationPanel: null,
+            }}
+          />
+        </div>
+
+        {/* Event Management Overlay - Only blocks events in text mode */}
+        {!isDrawingMode && (
           <div
             className='absolute inset-0'
-            onClick={handleTLDrawContainerClick}
             style={{
-              pointerEvents: "auto", // Always interactive when rendered
-              zIndex: 10, // Always on top
+              zIndex: 15, // Above TLDraw
               background: "transparent",
-              opacity: 1, // Canvas itself fully visible
+              pointerEvents: "auto", // Capture all events in text mode
+            }}
+            onClick={e => {
+              console.log(
+                "🔄 [EVENT-BLOCK] Blocking TLDraw click, forwarding to text editor"
+              );
+
+              // Prevent TLDraw from getting the event
+              e.preventDefault();
+              e.stopPropagation();
+
+              // Forward click to text editor
+              const textEditor = containerRef.current?.querySelector(".tiptap");
+              if (textEditor) {
+                (textEditor as HTMLElement).focus();
+              }
+            }}
+            onMouseDown={e => {
+              // Block all mouse events that could trigger TLDraw
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onMouseMove={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onMouseUp={e => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          />
+        )}
+
+        {/* Debug indicators */}
+        {process.env.NODE_ENV === "development" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "4px",
+              right: "4px",
+              background: isDrawingMode ? "green" : "orange",
+              color: "white",
+              padding: "4px",
+              fontSize: "12px",
+              zIndex: 999,
+              pointerEvents: "none",
             }}
           >
-            <Tldraw
-              store={tldrawStore}
-              onMount={handleMount}
-              autoFocus={true} // Auto focus when switching to draw mode
-              style={{
-                background: "rgba(0, 0, 0, 0)", // Completely transparent
-                backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
-                opacity: 1,
-              }}
-              components={{
-                // Hide UI elements for clean overlay
-                MainMenu: null,
-                QuickActions: null,
-                HelpMenu: null,
-                DebugMenu: null,
-                SharePanel: null,
-                MenuPanel: null,
-                TopPanel: null,
-                NavigationPanel: null,
-              }}
-            />
-            {/* Debug indicator for TLDraw layer */}
-            {process.env.NODE_ENV === "development" && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "4px",
-                  right: "4px",
-                  background: "green",
-                  color: "white",
-                  padding: "4px",
-                  fontSize: "12px",
-                  zIndex: 999,
-                  pointerEvents: "none",
-                }}
-              >
-                TLDRAW: ACTIVE & RENDERED
-              </div>
-            )}
+            TLDRAW: {isDrawingMode ? "INTERACTIVE" : "READ-ONLY"}
           </div>
         )}
 
@@ -345,7 +395,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
           <div
             style={{
               position: "absolute",
-              top: "4px",
+              top: "24px",
               right: "4px",
               background: "blue",
               color: "white",
@@ -355,7 +405,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
               pointerEvents: "none",
             }}
           >
-            TLDRAW: NOT RENDERED
+            EVENT BLOCKER ACTIVE
           </div>
         )}
 
