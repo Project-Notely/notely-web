@@ -45,6 +45,145 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
     console.log("🎨 [TLDRAW] Editor mounted");
   }, []);
 
+  // Debug logging for mode changes and event handling
+  React.useEffect(() => {
+    console.log("🔄 [MODE-DEBUG] Mode changed:", {
+      mode,
+      isTextMode,
+      isDrawingMode,
+      timestamp: new Date().toISOString(),
+    });
+  }, [mode, isTextMode, isDrawingMode]);
+
+  // Add click event logging to text editor container
+  const handleTextContainerClick = useCallback(
+    (e: React.MouseEvent) => {
+      console.log("🖱️ [TEXT-CLICK] Text container clicked:", {
+        mode,
+        target: e.target,
+        currentTarget: e.currentTarget,
+        pointerEvents: (e.currentTarget as HTMLElement).style.pointerEvents,
+        zIndex: (e.currentTarget as HTMLElement).style.zIndex,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    [mode]
+  );
+
+  // Add click event logging to TLDraw container
+  const handleTLDrawContainerClick = useCallback(
+    (e: React.MouseEvent) => {
+      console.log("🖱️ [TLDRAW-CLICK] TLDraw container clicked:", {
+        mode,
+        target: e.target,
+        currentTarget: e.currentTarget,
+        pointerEvents: (e.currentTarget as HTMLElement).style.pointerEvents,
+        zIndex: (e.currentTarget as HTMLElement).style.zIndex,
+        shouldBeInteractive: isDrawingMode,
+        timestamp: new Date().toISOString(),
+      });
+    },
+    [mode, isDrawingMode]
+  );
+
+  // Monitor text editor focus events
+  React.useEffect(() => {
+    const textContainer = containerRef.current?.querySelector(
+      ".simple-editor-wrapper"
+    );
+    if (!textContainer) return;
+
+    const handleFocus = (e: Event) => {
+      console.log("🎯 [FOCUS] Text editor gained focus:", {
+        mode,
+        target: e.target,
+        timestamp: new Date().toISOString(),
+      });
+    };
+
+    const handleBlur = (e: Event) => {
+      console.log("🎯 [BLUR] Text editor lost focus:", {
+        mode,
+        target: e.target,
+        timestamp: new Date().toISOString(),
+      });
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      console.log("⌨️ [KEYDOWN] Key pressed in text editor:", {
+        mode,
+        key: e.key,
+        target: e.target,
+        timestamp: new Date().toISOString(),
+      });
+    };
+
+    textContainer.addEventListener("focus", handleFocus, true);
+    textContainer.addEventListener("blur", handleBlur, true);
+    textContainer.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      textContainer.removeEventListener("focus", handleFocus, true);
+      textContainer.removeEventListener("blur", handleBlur, true);
+      textContainer.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [mode]);
+
+  // Log pointer events state on each render
+  React.useEffect(() => {
+    console.log("📊 [POINTER-EVENTS] Current state:", {
+      mode,
+      textLayerPointerEvents: "auto",
+      tldrawLayerPointerEvents: isDrawingMode ? "auto" : "none",
+      textLayerZIndex: 1,
+      tldrawLayerZIndex: 10,
+      timestamp: new Date().toISOString(),
+    });
+  }, [mode, isDrawingMode]);
+
+  // Check if Tiptap editor is properly initialized and editable
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const tiptapEditor = containerRef.current?.querySelector(".tiptap");
+      const isEditable = tiptapEditor?.getAttribute("contenteditable");
+      const hasTabIndex = tiptapEditor?.getAttribute("tabindex");
+
+      console.log("📝 [TIPTAP-DEBUG] Editor state:", {
+        mode,
+        editorElement: !!tiptapEditor,
+        contentEditable: isEditable,
+        tabIndex: hasTabIndex,
+        canFocus: tiptapEditor ? true : false,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Try to programmatically focus the editor when in text mode
+      if (isTextMode && tiptapEditor) {
+        console.log("🎯 [FOCUS-TEST] Attempting to focus Tiptap editor...");
+        (tiptapEditor as HTMLElement).focus();
+      }
+    }, 1000); // Wait for editor to initialize
+
+    return () => clearTimeout(timer);
+  }, [mode, isTextMode]);
+
+  // Focus text editor when switching to text mode
+  React.useEffect(() => {
+    if (isTextMode) {
+      const timer = setTimeout(() => {
+        const tiptapEditor = containerRef.current?.querySelector(".tiptap");
+        if (tiptapEditor) {
+          console.log(
+            "🎯 [AUTO-FOCUS] Focusing text editor on mode switch to text"
+          );
+          (tiptapEditor as HTMLElement).focus();
+        }
+      }, 100); // Small delay to ensure mode switch is complete
+
+      return () => clearTimeout(timer);
+    }
+  }, [isTextMode]);
+
   // Save drawing data
   const saveDrawing = useCallback(() => {
     if (!editorRef.current) return null;
@@ -100,16 +239,18 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
       >
         {/* Text Editor Layer - ALWAYS visible and ALWAYS interactive */}
         <div
-          className="absolute inset-0"
+          className='absolute inset-0'
+          onClick={handleTextContainerClick}
           style={{
             pointerEvents: "auto", // Always interactive
             zIndex: 1,
             background: "white",
-            border: process.env.NODE_ENV === 'development' ? "2px solid red" : "none", // Debug border
+            border:
+              process.env.NODE_ENV === "development" ? "2px solid red" : "none", // Debug border
           }}
         >
           <div
-            className="simple-editor-wrapper"
+            className='simple-editor-wrapper'
             style={{
               color: "black",
               backgroundColor: "white",
@@ -117,77 +258,106 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
               width: "100%",
               padding: "16px",
               overflow: "auto",
-              border: process.env.NODE_ENV === 'development' ? "2px solid blue" : "none", // Debug border
+              border:
+                process.env.NODE_ENV === "development"
+                  ? "2px solid blue"
+                  : "none", // Debug border
               minHeight: "400px",
             }}
           >
             <SimpleEditor />
             {/* Debug indicator */}
-            {process.env.NODE_ENV === 'development' && (
-              <div style={{
-                position: 'absolute',
-                top: '4px',
-                left: '4px',
-                background: 'red',
-                color: 'white',
-                padding: '4px',
-                fontSize: '12px',
-                zIndex: 999
-              }}>
+            {process.env.NODE_ENV === "development" && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "4px",
+                  left: "4px",
+                  background: "red",
+                  color: "white",
+                  padding: "4px",
+                  fontSize: "12px",
+                  zIndex: 999,
+                }}
+              >
                 TEXT EDITOR HERE
               </div>
             )}
           </div>
         </div>
 
-        {/* TLDraw Overlay Layer - ALWAYS transparent, interactive only in draw mode */}
-        <div
-          className='absolute inset-0'
-          style={{
-            pointerEvents: isDrawingMode ? "auto" : "none", // Only interactive in draw mode
-            zIndex: 10, // Always on top
-            background: "transparent",
-            opacity: 1, // Canvas itself fully visible
-          }}
-        >
-          <Tldraw
-            store={tldrawStore}
-            onMount={handleMount}
-            autoFocus={false} // Don't steal focus from text editor
+        {/* TLDraw Overlay Layer - Only render when in drawing mode */}
+        {isDrawingMode && (
+          <div
+            className='absolute inset-0'
+            onClick={handleTLDrawContainerClick}
             style={{
-              background: "rgba(0, 0, 0, 0)", // Completely transparent
-              backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
-              opacity: 1,
+              pointerEvents: "auto", // Always interactive when rendered
+              zIndex: 10, // Always on top
+              background: "transparent",
+              opacity: 1, // Canvas itself fully visible
             }}
-            components={{
-              // Hide UI elements for clean overlay
-              MainMenu: null,
-              QuickActions: null,
-              HelpMenu: null,
-              DebugMenu: null,
-              SharePanel: null,
-              MenuPanel: null,
-              TopPanel: null,
-              NavigationPanel: null,
-            }}
-          />
-          {/* Debug indicator for TLDraw layer */}
-          {process.env.NODE_ENV === 'development' && (
-            <div style={{
-              position: 'absolute',
-              top: '4px',
-              right: '4px',
-              background: isDrawingMode ? 'green' : 'orange',
-              color: 'white',
-              padding: '4px',
-              fontSize: '12px',
+          >
+            <Tldraw
+              store={tldrawStore}
+              onMount={handleMount}
+              autoFocus={true} // Auto focus when switching to draw mode
+              style={{
+                background: "rgba(0, 0, 0, 0)", // Completely transparent
+                backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
+                opacity: 1,
+              }}
+              components={{
+                // Hide UI elements for clean overlay
+                MainMenu: null,
+                QuickActions: null,
+                HelpMenu: null,
+                DebugMenu: null,
+                SharePanel: null,
+                MenuPanel: null,
+                TopPanel: null,
+                NavigationPanel: null,
+              }}
+            />
+            {/* Debug indicator for TLDraw layer */}
+            {process.env.NODE_ENV === "development" && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "4px",
+                  right: "4px",
+                  background: "green",
+                  color: "white",
+                  padding: "4px",
+                  fontSize: "12px",
+                  zIndex: 999,
+                  pointerEvents: "none",
+                }}
+              >
+                TLDRAW: ACTIVE & RENDERED
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Debug indicator when TLDraw is not rendered */}
+        {!isDrawingMode && process.env.NODE_ENV === "development" && (
+          <div
+            style={{
+              position: "absolute",
+              top: "4px",
+              right: "4px",
+              background: "blue",
+              color: "white",
+              padding: "4px",
+              fontSize: "12px",
               zIndex: 999,
-              pointerEvents: 'none'
-            }}>
-              TLDRAW: {isDrawingMode ? 'ACTIVE' : 'INACTIVE'}
-            </div>
-          )}
-        </div>
+              pointerEvents: "none",
+            }}
+          >
+            TLDRAW: NOT RENDERED
+          </div>
+        )}
 
         {/* Mode Indicator */}
         <div className='absolute top-4 right-4 z-20'>

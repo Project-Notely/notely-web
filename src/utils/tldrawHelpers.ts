@@ -23,11 +23,11 @@ export const getStrokeHistory = (editor: Editor) => {
   const strokeHistory = strokes.map(stroke => ({
     id: stroke.id,
     type: stroke.type,
-    // @ts-ignore - TLDraw shape properties
+    // @ts-expect-error - TLDraw shape properties
     points: stroke.props?.segments || [],
-    // @ts-ignore
+    // @ts-expect-error - TLDraw shape properties
     color: stroke.props?.color || "black",
-    // @ts-ignore
+    // @ts-expect-error - TLDraw shape properties
     size: stroke.props?.size || "m",
     timestamp: stroke.meta?.timestamp || Date.now(),
     isComplete: stroke.props?.isComplete || false,

@@ -2,7 +2,7 @@ import TLDrawAnnotatedEditor from "@/components/TLDrawAnnotatedEditor";
 import React from "react";
 
 const AnnotatedEditorPage: React.FC = () => {
-  const handleSave = (data: { content: any; drawing: any }) => {
+  const handleSave = (data: { content: unknown; drawing: unknown }) => {
     console.log("💾 [SAVE] Document saved:", data);
     // TODO: Implement actual save functionality
   };
