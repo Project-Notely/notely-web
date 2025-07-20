@@ -11,6 +11,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems = [
     { path: "/", label: "Enhanced Canvas" },
     { path: "/simple", label: "Simple Canvas" },
+    { path: "/editor", label: "Text Editor" },
+    { path: "/annotated", label: "Annotated Editor" },
   ];
 
   const isActive = (path: string) => location.pathname === path;

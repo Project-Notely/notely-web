@@ -1,6 +1,155 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Tiptap Editor Styles */
+@import "./_variables.scss";
+@import "./_keyframe-animations.scss";
+
+/* TLDraw Styles */
+@import "@tldraw/tldraw/tldraw.css";
+
+/* TLDraw Overlay Fixes */
+.tldraw-annotated-editor .tldraw__canvas {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  opacity: 1 !important;
+}
+
+.tldraw-annotated-editor .tldraw__viewport {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure TLDraw itself has transparent background */
+.tldraw-annotated-editor .tldraw {
+  background: rgba(0, 0, 0, 0) !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+/* Force all TLDraw background elements to be transparent */
+.tldraw-annotated-editor [data-testid="canvas"] {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+.tldraw-annotated-editor .tl-background {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  opacity: 0 !important;
+}
+
+/* Additional TLDraw transparency rules */
+.tldraw-annotated-editor .tl-grid,
+.tldraw-annotated-editor .tl-grid-dot,
+.tldraw-annotated-editor .tl-canvas-background,
+.tldraw-annotated-editor .tl-background-paper {
+  background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  opacity: 0 !important;
+}
+
+/* Ensure the main TLDraw container is transparent */
+.tldraw-annotated-editor .tldraw > div,
+.tldraw-annotated-editor .tldraw canvas:first-child {
+  background: rgba(0, 0, 0, 0) !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+/* Ensure proper scrolling when not in drawing mode */
+body {
+  overflow-y: auto !important;
+}
+
+/* Fix TLDraw preventing scroll when in text mode */
+.tldraw-annotated-editor [data-testid="canvas"] {
+  pointer-events: auto;
+}
+
+/* Ensure text editor is fully functional */
+.tiptap-editor {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix text editor colors in annotated mode */
+.tldraw-annotated-editor .tiptap {
+  color: black !important;
+  background-color: white !important;
+}
+
+.tldraw-annotated-editor .tiptap * {
+  color: inherit !important;
+}
+
+.tldraw-annotated-editor .tiptap p {
+  color: black !important;
+  margin: 1em 0;
+}
+
+.tldraw-annotated-editor .tiptap h1,
+.tldraw-annotated-editor .tiptap h2,
+.tldraw-annotated-editor .tiptap h3,
+.tldraw-annotated-editor .tiptap h4,
+.tldraw-annotated-editor .tiptap h5,
+.tldraw-annotated-editor .tiptap h6 {
+  color: black !important;
+}
+
+/* Ensure the simple editor container has proper styling */
+.tldraw-annotated-editor .simple-editor {
+  color: black !important;
+  background: white !important;
+  min-height: 100%;
+}
+
+/* Override any dark mode or theme styles */
+.tldraw-annotated-editor .simple-editor * {
+  color: black !important;
+}
+
+/* Specific wrapper styling */
+.simple-editor-wrapper {
+  color: black !important;
+  background: white !important;
+}
+
+.simple-editor-wrapper .tiptap {
+  color: black !important;
+  background: white !important;
+  min-height: 400px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Ensure all text elements are visible */
+.simple-editor-wrapper p,
+.simple-editor-wrapper div,
+.simple-editor-wrapper span,
+.simple-editor-wrapper strong,
+.simple-editor-wrapper em,
+.simple-editor-wrapper ul,
+.simple-editor-wrapper ol,
+.simple-editor-wrapper li {
+  color: black !important;
+}
+
+/* Make sure text editor is always visible even when not active */
+.tldraw-annotated-editor .simple-editor-wrapper {
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: white !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Ensure text editor has proper visibility */
+.tldraw-annotated-editor .simple-editor-wrapper * {
+  visibility: visible !important;
+}
+
+/* Remove the draw mode transparency - text should always be fully visible */
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {
