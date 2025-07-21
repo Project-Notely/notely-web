@@ -1,4 +1,4 @@
-import EditorModeToggle from "@/components/EditorModeToggle";
+import EditorModeToggle from "@/components/AnnotatedTextEditior/EditorModeToggle";
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
 import { useEditorMode, type EditorMode } from "@/hooks/useEditorMode";
@@ -9,7 +9,7 @@ import {
   Tldraw,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 interface TLDrawAnnotatedEditorProps {
   className?: string;
@@ -47,84 +47,6 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
     console.log("🎨 [TLDRAW] Editor mounted");
   }, []);
 
-  // Debug logging for mode changes and event handling
-  useEffect(() => {
-    console.log("🔄 [MODE-DEBUG] Mode changed:", {
-      mode,
-      isTextMode,
-      isDrawingMode,
-      timestamp: new Date().toISOString(),
-    });
-  }, [mode, isTextMode, isDrawingMode]);
-
-  // Log pointer events state on each render
-  useEffect(() => {
-    console.log("📊 [POINTER-EVENTS] Current state:", {
-      mode,
-      textLayerPointerEvents: "auto",
-      tldrawLayerPointerEvents: isDrawingMode ? "auto" : "none",
-      textLayerZIndex: 1,
-      tldrawLayerZIndex: 10,
-      timestamp: new Date().toISOString(),
-    });
-  }, [mode, isDrawingMode]);
-
-  // Check if Tiptap editor is properly initialized and editable
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const tiptapEditor = containerRef.current?.querySelector(".tiptap");
-      const isEditable = tiptapEditor?.getAttribute("contenteditable");
-      const hasTabIndex = tiptapEditor?.getAttribute("tabindex");
-
-      console.log("📝 [TIPTAP-DEBUG] Editor state:", {
-        mode,
-        editorElement: !!tiptapEditor,
-        contentEditable: isEditable,
-        tabIndex: hasTabIndex,
-        canFocus: tiptapEditor ? true : false,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Try to programmatically focus the editor when in text mode
-      if (isTextMode && tiptapEditor) {
-        console.log("🎯 [FOCUS-TEST] Attempting to focus Tiptap editor...");
-        (tiptapEditor as HTMLElement).focus();
-      }
-    }, 1000); // Wait for editor to initialize
-
-    return () => clearTimeout(timer);
-  }, [mode, isTextMode]);
-
-  // Focus text editor when switching to text mode
-  useEffect(() => {
-    if (isTextMode) {
-      const timer = setTimeout(() => {
-        const tiptapEditor = containerRef.current?.querySelector(".tiptap");
-        if (tiptapEditor) {
-          console.log(
-            "🎯 [AUTO-FOCUS] Focusing text editor on mode switch to text"
-          );
-          (tiptapEditor as HTMLElement).focus();
-        }
-      }, 100); // Small delay to ensure mode switch is complete
-
-      return () => clearTimeout(timer);
-    }
-  }, [isTextMode]);
-
-  // Focus TLDraw when switching to draw mode
-  useEffect(() => {
-    if (isDrawingMode && editorRef.current) {
-      const timer = setTimeout(() => {
-        console.log("🎯 [AUTO-FOCUS] Focusing TLDraw on mode switch to draw");
-        // TLDraw should be ready to receive events now
-        editorRef.current?.updateInstanceState({ isToolLocked: false });
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isDrawingMode]);
-
   // Save drawing data
   const saveDrawing = useCallback(() => {
     if (!editorRef.current) return null;
@@ -160,7 +82,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   return (
     <div className={`tldraw-annotated-editor ${className}`} data-mode={mode}>
       {/* Mode Toggle */}
-      <div className='mb-4 flex justify-center'>
+      <div className='mb-4 flex justify-center border-green-500'>
         <EditorModeToggle
           mode={mode}
           isTransitioning={modeState.isTransitioning}
@@ -176,7 +98,6 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
       <div
         ref={containerRef}
         className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200'
-        style={{ height: "600px" }}
       >
         {/* Text Editor Layer */}
         <div
