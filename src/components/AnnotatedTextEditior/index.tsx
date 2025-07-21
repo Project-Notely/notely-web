@@ -9,11 +9,13 @@ import {
   Tldraw,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 
 interface TLDrawAnnotatedEditorProps {
   className?: string;
   initialMode?: EditorMode;
+  // TODO: fix this later
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSave?: (data: { content: any; drawing: any }) => void;
 }
 
@@ -46,7 +48,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   }, []);
 
   // Debug logging for mode changes and event handling
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("🔄 [MODE-DEBUG] Mode changed:", {
       mode,
       isTextMode,
@@ -55,82 +57,8 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
     });
   }, [mode, isTextMode, isDrawingMode]);
 
-  // Add click event logging to text editor container
-  const handleTextContainerClick = useCallback(
-    (e: React.MouseEvent) => {
-      console.log("🖱️ [TEXT-CLICK] Text container clicked:", {
-        mode,
-        target: e.target,
-        currentTarget: e.currentTarget,
-        pointerEvents: (e.currentTarget as HTMLElement).style.pointerEvents,
-        zIndex: (e.currentTarget as HTMLElement).style.zIndex,
-        timestamp: new Date().toISOString(),
-      });
-    },
-    [mode]
-  );
-
-  // Add click event logging to TLDraw container
-  const handleTLDrawContainerClick = useCallback(
-    (e: React.MouseEvent) => {
-      console.log("🖱️ [TLDRAW-CLICK] TLDraw container clicked:", {
-        mode,
-        target: e.target,
-        currentTarget: e.currentTarget,
-        pointerEvents: (e.currentTarget as HTMLElement).style.pointerEvents,
-        zIndex: (e.currentTarget as HTMLElement).style.zIndex,
-        shouldBeInteractive: isDrawingMode,
-        timestamp: new Date().toISOString(),
-      });
-    },
-    [mode, isDrawingMode]
-  );
-
-  // Monitor text editor focus events
-  React.useEffect(() => {
-    const textContainer = containerRef.current?.querySelector(
-      ".simple-editor-wrapper"
-    );
-    if (!textContainer) return;
-
-    const handleFocus = (e: Event) => {
-      console.log("🎯 [FOCUS] Text editor gained focus:", {
-        mode,
-        target: e.target,
-        timestamp: new Date().toISOString(),
-      });
-    };
-
-    const handleBlur = (e: Event) => {
-      console.log("🎯 [BLUR] Text editor lost focus:", {
-        mode,
-        target: e.target,
-        timestamp: new Date().toISOString(),
-      });
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      console.log("⌨️ [KEYDOWN] Key pressed in text editor:", {
-        mode,
-        key: e.key,
-        target: e.target,
-        timestamp: new Date().toISOString(),
-      });
-    };
-
-    textContainer.addEventListener("focus", handleFocus, true);
-    textContainer.addEventListener("blur", handleBlur, true);
-    textContainer.addEventListener("keydown", handleKeyDown, true);
-
-    return () => {
-      textContainer.removeEventListener("focus", handleFocus, true);
-      textContainer.removeEventListener("blur", handleBlur, true);
-      textContainer.removeEventListener("keydown", handleKeyDown, true);
-    };
-  }, [mode]);
-
   // Log pointer events state on each render
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("📊 [POINTER-EVENTS] Current state:", {
       mode,
       textLayerPointerEvents: "auto",
@@ -142,7 +70,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   }, [mode, isDrawingMode]);
 
   // Check if Tiptap editor is properly initialized and editable
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       const tiptapEditor = containerRef.current?.querySelector(".tiptap");
       const isEditable = tiptapEditor?.getAttribute("contenteditable");
@@ -168,7 +96,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   }, [mode, isTextMode]);
 
   // Focus text editor when switching to text mode
-  React.useEffect(() => {
+  useEffect(() => {
     if (isTextMode) {
       const timer = setTimeout(() => {
         const tiptapEditor = containerRef.current?.querySelector(".tiptap");
@@ -185,7 +113,7 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   }, [isTextMode]);
 
   // Focus TLDraw when switching to draw mode
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDrawingMode && editorRef.current) {
       const timer = setTimeout(() => {
         console.log("🎯 [AUTO-FOCUS] Focusing TLDraw on mode switch to draw");
@@ -261,8 +189,6 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
             width: "100%",
             padding: "16px", // Ensure clickable area
             pointerEvents: "auto", // Always interactive
-            border:
-              process.env.NODE_ENV === "development" ? "2px solid red" : "none", // Debug border
           }}
           onClick={e => {
             console.log("🖱️ [TEXT-WRAPPER-CLICK] Text wrapper clicked:", {
