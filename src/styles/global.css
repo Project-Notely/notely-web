@@ -9,62 +9,53 @@
 @import "@tldraw/tldraw/tldraw.css";
 
 /* TLDraw Overlay Fixes */
-.tldraw-annotated-editor .tldraw__canvas {
-  background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
-  opacity: 1 !important;
+.annotated-editor .tldraw__canvas {
+  background: transparent;
+  background-color: rgba(0, 0, 0, 0);
 }
 
-.tldraw-annotated-editor .tldraw__viewport {
-  background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
-  opacity: 1 !important;
+.annotated-editor .tldraw__viewport {
+  background: transparent;
+  background-color: rgba(0, 0, 0, 0);
 }
 
-/* Ensure TLDraw itself has transparent background */
-.tldraw-annotated-editor .tldraw {
-  background: rgba(0, 0, 0, 0) !important;
-  background-color: rgba(0, 0, 0, 0) !important;
+.annotated-editor .tldraw {
+  background: rgba(0, 0, 0, 0);
+  background-color: rgba(0, 0, 0, 0);
 }
 
-/* Force all TLDraw background elements to be transparent */
-.tldraw-annotated-editor [data-testid="canvas"] {
-  background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
+.annotated-editor [data-testid="canvas"] {
+  background: transparent;
+  background-color: rgba(0, 0, 0, 0);
 }
 
-.tldraw-annotated-editor .tl-background {
-  background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
-  opacity: 0 !important;
+.annotated-editor .tl-background {
+  background: transparent;
+  background-color: rgba(0, 0, 0, 0);
+  opacity: 0;
 }
 
-/* Additional TLDraw transparency rules */
-.tldraw-annotated-editor .tl-grid,
-.tldraw-annotated-editor .tl-grid-dot,
-.tldraw-annotated-editor .tl-canvas-background,
-.tldraw-annotated-editor .tl-background-paper {
-  background: transparent !important;
-  background-color: rgba(0, 0, 0, 0) !important;
-  opacity: 0 !important;
+.annotated-editor .tl-grid,
+.annotated-editor .tl-grid-dot,
+.annotated-editor .tl-canvas-background,
+.annotated-editor .tl-background-paper {
+  background: transparent;
+  background-color: rgba(0, 0, 0, 0);
+  opacity: 0;
 }
 
-/* Ensure the main TLDraw container is transparent */
-.tldraw-annotated-editor .tldraw > div,
-.tldraw-annotated-editor .tldraw canvas:first-child {
-  background: rgba(0, 0, 0, 0) !important;
-  background-color: rgba(0, 0, 0, 0) !important;
+.annotated-editor .tldraw > div,
+.annotated-editor .tldraw canvas:first-child {
+  background: rgba(0, 0, 0, 0);
+  background-color: rgba(0, 0, 0, 0);
 }
 
-/* AGGRESSIVE: Completely disable TLDraw when in text mode */
+/* Disable TLDraw interactions when in text mode */
 .tldraw-disabled,
 .tldraw-disabled * {
-  pointer-events: none !important;
-  -webkit-touch-callout: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
+  pointer-events: none;
+  user-select: none;
+  touch-action: none;
 }
 
 .tldraw-disabled canvas,
@@ -72,107 +63,53 @@
 .tldraw-disabled div,
 .tldraw-disabled button,
 .tldraw-disabled input {
-  pointer-events: none !important;
+  pointer-events: none;
 }
 
-/* Make sure TLDraw canvases don't capture events in text mode */
-.tldraw-disabled .tldraw,
-.tldraw-disabled .tldraw__canvas,
-.tldraw-disabled .tldraw__viewport {
-  pointer-events: none !important;
-  touch-action: none !important;
-}
-
-/* Ensure proper scrolling when not in drawing mode */
-body {
-  overflow-y: auto !important;
-}
-
-/* Fix TLDraw preventing scroll when in text mode */
-.tldraw-annotated-editor [data-testid="canvas"] {
-  pointer-events: auto;
-}
-
-/* Ensure text editor is fully functional */
-.tiptap-editor {
+/* Text Editor Styling */
+.annotated-editor .simple-editor-wrapper {
+  opacity: 1;
+  visibility: visible;
+  background: white;
   position: relative;
   z-index: 1;
 }
 
-/* Fix text editor colors in annotated mode */
-.tldraw-annotated-editor .tiptap {
-  color: black !important;
-  background-color: white !important;
+.annotated-editor .simple-editor-wrapper * {
+  visibility: visible;
 }
 
-.tldraw-annotated-editor .tiptap * {
-  color: inherit !important;
-}
-
-.tldraw-annotated-editor .tiptap p {
-  color: black !important;
-  margin: 1em 0;
-}
-
-.tldraw-annotated-editor .tiptap h1,
-.tldraw-annotated-editor .tiptap h2,
-.tldraw-annotated-editor .tiptap h3,
-.tldraw-annotated-editor .tiptap h4,
-.tldraw-annotated-editor .tiptap h5,
-.tldraw-annotated-editor .tiptap h6 {
-  color: black !important;
-}
-
-/* Ensure the simple editor container has proper styling */
-.tldraw-annotated-editor .simple-editor {
-  color: black !important;
-  background: white !important;
-  min-height: 100%;
-}
-
-/* Override any dark mode or theme styles */
-.tldraw-annotated-editor .simple-editor * {
-  color: black !important;
-}
-
-/* Specific wrapper styling */
-.simple-editor-wrapper {
-  color: black !important;
-  background: white !important;
-}
-
-.simple-editor-wrapper .tiptap {
-  color: black !important;
-  background: white !important;
+.annotated-editor .simple-editor-wrapper .tiptap {
+  color: #1f2937;
+  background-color: white;
   min-height: 400px;
   font-size: 16px;
   line-height: 1.5;
 }
 
-/* Ensure all text elements are visible */
-.simple-editor-wrapper p,
-.simple-editor-wrapper div,
-.simple-editor-wrapper span,
-.simple-editor-wrapper strong,
-.simple-editor-wrapper em,
-.simple-editor-wrapper ul,
-.simple-editor-wrapper ol,
-.simple-editor-wrapper li {
-  color: black !important;
+.annotated-editor .simple-editor-wrapper p,
+.annotated-editor .simple-editor-wrapper div,
+.annotated-editor .simple-editor-wrapper span,
+.annotated-editor .simple-editor-wrapper strong,
+.annotated-editor .simple-editor-wrapper em,
+.annotated-editor .simple-editor-wrapper ul,
+.annotated-editor .simple-editor-wrapper ol,
+.annotated-editor .simple-editor-wrapper li {
+  color: #1f2937;
 }
 
-/* Make sure text editor is always visible even when not active */
-.tldraw-annotated-editor .simple-editor-wrapper {
-  opacity: 1 !important;
-  visibility: visible !important;
-  background: white !important;
-  position: relative !important;
-  z-index: 1 !important;
+.annotated-editor .simple-editor-wrapper h1,
+.annotated-editor .simple-editor-wrapper h2,
+.annotated-editor .simple-editor-wrapper h3,
+.annotated-editor .simple-editor-wrapper h4,
+.annotated-editor .simple-editor-wrapper h5,
+.annotated-editor .simple-editor-wrapper h6 {
+  color: #1f2937;
 }
 
-/* Ensure text editor has proper visibility */
-.tldraw-annotated-editor .simple-editor-wrapper * {
-  visibility: visible !important;
+/* General Scrolling */
+body {
+  overflow-y: auto;
 }
 
 /* Remove the draw mode transparency - text should always be fully visible */

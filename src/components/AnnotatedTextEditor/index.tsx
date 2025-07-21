@@ -11,15 +11,13 @@ import {
 import "@tldraw/tldraw/tldraw.css";
 import React, { useCallback, useRef, useState } from "react";
 
-interface TLDrawAnnotatedEditorProps {
+interface AnnotatedEditorProps {
   className?: string;
   initialMode?: EditorMode;
-  // TODO: fix this later
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSave?: (data: { content: any; drawing: any }) => void;
+  onSave?: (data: { content: unknown; drawing: unknown }) => void;
 }
 
-const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
+const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
   className = "",
   initialMode = "text",
   onSave,
@@ -44,25 +42,18 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   // Store TLDraw editor reference
   const handleMount = useCallback((editor: Editor) => {
     editorRef.current = editor;
-    console.log("🎨 [TLDRAW] Editor mounted");
   }, []);
 
   // Save drawing data
   const saveDrawing = useCallback(() => {
     if (!editorRef.current) return null;
-
-    const editor = editorRef.current;
-    const snapshot = editor.store.getSnapshot();
-
-    console.log("💾 [TLDRAW] Saving drawing data");
-    return snapshot;
+    return editorRef.current.store.getSnapshot();
   }, []);
 
   // Clear drawing
   const clearDrawing = useCallback(() => {
     if (!editorRef.current) return;
 
-    console.log("🗑️ [TLDRAW] Clearing drawing");
     editorRef.current.selectAll();
     editorRef.current.deleteShapes(editorRef.current.getSelectedShapeIds());
   }, []);
@@ -71,18 +62,17 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   const handleSave = useCallback(() => {
     const drawingSnapshot = saveDrawing();
     const combinedData = {
-      content: null, // TODO: Get Tiptap content
+      content: null, // TODO: Get Tiptap content when implemented
       drawing: drawingSnapshot,
     };
 
-    console.log("💾 [COMBINED] Saving document:", combinedData);
     onSave?.(combinedData);
   }, [saveDrawing, onSave]);
 
   return (
-    <div className={`tldraw-annotated-editor ${className}`} data-mode={mode}>
+    <div className={`annotated-editor ${className}`}>
       {/* Mode Toggle */}
-      <div className='mb-4 flex justify-center border-green-500'>
+      <div className='mb-4 flex justify-center'>
         <EditorModeToggle
           mode={mode}
           isTransitioning={modeState.isTransitioning}
@@ -94,60 +84,41 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
         />
       </div>
 
-      {/* Single Canvas Container - Both layers always present */}
+      {/* Editor Container */}
       <div
         ref={containerRef}
-        className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200'
+        className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200 h-[600px]'
       >
         {/* Text Editor Layer */}
         <div
-          className='simple-editor-wrapper'
-          style={{
-            position: "relative",
-            zIndex: isTextMode ? 20 : 1, // Higher z-index in text mode to be above TLDraw
-            background: "white",
-            minHeight: "100%",
-            width: "100%",
-            padding: "16px", // Ensure clickable area
-            pointerEvents: "auto", // Always interactive
-          }}
-          onClick={e => {
-            console.log("🖱️ [TEXT-WRAPPER-CLICK] Text wrapper clicked:", {
-              mode,
-              zIndex: isTextMode ? 20 : 1,
-              pointerEvents: "auto",
-              target: e.target,
-              currentTarget: e.currentTarget,
-              timestamp: new Date().toISOString(),
-            });
-          }}
+          className={`
+            simple-editor-wrapper relative w-full h-full p-4 bg-white
+            ${isTextMode ? "z-20" : "z-10"}
+            ${isTextMode ? "pointer-events-auto" : "pointer-events-none"}
+          `}
         >
           <SimpleEditor />
         </div>
 
-        {/* TLDraw Layer - Always rendered for visibility */}
+        {/* TLDraw Layer */}
         <div
-          className='absolute inset-0'
-          style={{
-            zIndex: 10,
-            background: "transparent",
-            pointerEvents: isDrawingMode ? "auto" : "none", // Interactive only in draw mode
-          }}
+          className={`
+            absolute inset-0 bg-transparent
+            ${isDrawingMode ? "z-20 pointer-events-auto" : "z-10 pointer-events-none"}
+          `}
         >
           <div
-            style={{
-              width: "100%",
-              height: "100%",
-              pointerEvents: isDrawingMode ? "auto" : "none",
-            }}
-            className={isTextMode ? "tldraw-disabled" : ""}
+            className={`
+              w-full h-full
+              ${isTextMode ? "tldraw-disabled" : ""}
+              ${isDrawingMode ? "pointer-events-auto" : "pointer-events-none"}
+            `}
           >
             <Tldraw
               store={tldrawStore}
               onMount={handleMount}
-              autoFocus={false} // Never auto-focus to avoid stealing focus
+              autoFocus={false}
               components={{
-                // Hide UI elements for clean overlay
                 MainMenu: null,
                 QuickActions: null,
                 HelpMenu: null,
@@ -161,93 +132,38 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
           </div>
         </div>
 
-        {/* Debug indicators */}
-        {process.env.NODE_ENV === "development" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "4px",
-              right: "4px",
-              background: isDrawingMode ? "green" : "orange",
-              color: "white",
-              padding: "4px",
-              fontSize: "12px",
-              zIndex: 999,
-              pointerEvents: "none",
-            }}
-          >
-            TLDRAW: {isDrawingMode ? "INTERACTIVE" : "READ-ONLY"}
-          </div>
-        )}
-
-        {/* Debug indicator for text editor z-index */}
-        {process.env.NODE_ENV === "development" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "44px",
-              right: "4px",
-              background: "red",
-              color: "white",
-              padding: "4px",
-              fontSize: "12px",
-              zIndex: 999,
-              pointerEvents: "none",
-            }}
-          >
-            TEXT Z-INDEX: {isTextMode ? 20 : 1}
-          </div>
-        )}
-
-        {/* Debug indicator for text editor clickability */}
-        {!isDrawingMode && process.env.NODE_ENV === "development" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "24px",
-              right: "4px",
-              background: "purple",
-              color: "white",
-              padding: "4px",
-              fontSize: "12px",
-              zIndex: 999,
-              pointerEvents: "none",
-            }}
-          >
-            TEXT EDITOR CLICKABLE
-          </div>
-        )}
-
         {/* Mode Indicator */}
-        <div className='absolute top-4 right-4 z-20'>
+        <div className='absolute top-4 right-4 z-30 pointer-events-none'>
           <div
             className={`
-            px-3 py-1 rounded-full text-sm font-medium
-            ${
-              isTextMode
-                ? "bg-blue-100 text-blue-800"
-                : "bg-purple-100 text-purple-800"
-            }
-            ${modeState.isTransitioning ? "animate-pulse" : ""}
-          `}
+              px-3 py-1 rounded-full text-sm font-medium transition-colors
+              ${
+                isTextMode
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-purple-100 text-purple-800"
+              }
+              ${modeState.isTransitioning ? "animate-pulse" : ""}
+            `}
           >
             {isTextMode ? "✏️ Text Tool" : "🎨 Draw Tool"}
           </div>
         </div>
       </div>
 
-      {/* Simple Controls */}
+      {/* Controls */}
       <div className='mt-4 flex justify-center gap-4'>
         <button
           onClick={clearDrawing}
-          className='px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors'
+          className='px-4 py-2 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded-lg transition-colors'
+          disabled={modeState.isTransitioning}
         >
           🗑️ Clear Drawings
         </button>
 
         <button
           onClick={handleSave}
-          className='px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors'
+          className='px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors'
+          disabled={modeState.isTransitioning}
         >
           💾 Save
         </button>
@@ -256,4 +172,4 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
   );
 };
 
-export default TLDrawAnnotatedEditor;
+export default AnnotatedTextEditor;
