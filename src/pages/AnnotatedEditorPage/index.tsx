@@ -1,4 +1,4 @@
-import TLDrawAnnotatedEditor from "@/components/AnnotatedTextEditior";
+import TLDrawAnnotatedEditor from "@/components/AnnotatedTextEditor/index";
 import React from "react";
 
 const AnnotatedEditorPage: React.FC = () => {

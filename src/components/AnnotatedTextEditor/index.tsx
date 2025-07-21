@@ -1,4 +1,4 @@
-import EditorModeToggle from "@/components/AnnotatedTextEditior/EditorModeToggle";
+import EditorModeToggle from "@/components/AnnotatedTextEditor/EditorModeToggle";
 import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
 import "@/components/tiptap-templates/simple/simple-editor.scss";
 import { useEditorMode, type EditorMode } from "@/hooks/useEditorMode";
@@ -146,12 +146,6 @@ const TLDrawAnnotatedEditor: React.FC<TLDrawAnnotatedEditorProps> = ({
               store={tldrawStore}
               onMount={handleMount}
               autoFocus={false} // Never auto-focus to avoid stealing focus
-              style={{
-                background: "rgba(0, 0, 0, 0)", // Completely transparent
-                backgroundColor: "rgba(0, 0, 0, 0)", // Completely transparent
-                opacity: 1,
-                pointerEvents: isDrawingMode ? "auto" : "none", // Disable TLDraw interactions in text mode
-              }}
               components={{
                 // Hide UI elements for clean overlay
                 MainMenu: null,
