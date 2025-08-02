@@ -12,7 +12,7 @@ import {
   Editor as TldrawEditor,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface AnnotatedEditorProps {
   className?: string;
@@ -32,6 +32,8 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
   onContentChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const tldrawContainerRef = useRef<HTMLDivElement>(null);
   const [tldrawStore] = useState(() =>
     createTLStore({ shapeUtils: defaultShapeUtils })
   );
@@ -92,19 +94,38 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
     onContentChange?.();
   }, [markAsChanged, onContentChange]);
 
-  // Clear drawing
-  const clearDrawing = useCallback(() => {
-    if (!setTldrawEditor) return;
+  // Scroll synchronization between text editor and TLDraw using camera
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
 
-    const editor = setTldrawEditor as unknown as {
-      current: TldrawEditor | null;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollLeft = scrollContainer.scrollLeft;
+
+      // Get the current TLDraw editor instance
+      const tldrawEditor = setTldrawEditor as unknown as {
+        current: TldrawEditor | null;
+      };
+
+      if (tldrawEditor.current) {
+        // Update TLDraw camera to follow the scroll
+        const currentCamera = tldrawEditor.current.getCamera();
+        tldrawEditor.current.setCamera({
+          ...currentCamera,
+          x: -scrollLeft,
+          y: -scrollTop,
+        });
+      }
     };
-    if (editor.current) {
-      editor.current.selectAll();
-      editor.current.deleteShapes(editor.current.getSelectedShapeIds());
-    }
-    markAsChanged();
-  }, [setTldrawEditor, markAsChanged]);
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, [setTldrawEditor]);
 
   // Handle save with dialog
   const handleSaveClick = useCallback(() => {
@@ -463,51 +484,67 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
       {/* Editor Container */}
       <div
         ref={containerRef}
-        className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200 h-[600px]'
+        className='relative w-full bg-white rounded-lg shadow-lg border border-gray-200 h-[600px] overflow-hidden'
       >
-        {/* Text Editor Layer */}
+        {/* Shared Scrollable Container */}
         <div
-          className={`
-            simple-editor-wrapper relative w-full h-full p-4 bg-white
-            ${isTextMode ? "z-20" : "z-10"}
-            ${isTextMode ? "pointer-events-auto" : "pointer-events-none"}
-          `}
+          ref={scrollContainerRef}
+          className='relative w-full h-full overflow-auto'
+          style={{
+            // Custom scrollbar styling
+            scrollbarWidth: "thin",
+            scrollbarColor: "#cbd5e1 transparent",
+          }}
         >
-          <SimpleEditor
-            onEditorReady={handleTiptapEditorReady}
-            onChange={handleContentChange}
-          />
-        </div>
+          {/* Content Container - this will be the scrolled content */}
+          <div className='relative min-h-full'>
+            {/* Text Editor Layer */}
+            <div
+              className={`
+                simple-editor-wrapper relative w-full min-h-full p-4 bg-white
+                ${isTextMode ? "z-20" : "z-10"}
+                ${isTextMode ? "pointer-events-auto" : "pointer-events-none"}
+              `}
+            >
+              <SimpleEditor
+                onEditorReady={handleTiptapEditorReady}
+                onChange={handleContentChange}
+              />
+            </div>
 
-        {/* TLDraw Layer */}
-        <div
-          className={`
-            absolute inset-0 bg-transparent
-            ${isDrawingMode ? "z-20 pointer-events-auto" : "z-10 pointer-events-none"}
-          `}
-        >
-          <div
-            className={`
-              w-full h-full
-              ${isTextMode ? "tldraw-disabled" : ""}
-              ${isDrawingMode ? "pointer-events-auto" : "pointer-events-none"}
-            `}
-          >
-            <Tldraw
-              store={tldrawStore}
-              onMount={handleTldrawMount}
-              autoFocus={false}
-              components={{
-                MainMenu: null,
-                QuickActions: null,
-                HelpMenu: null,
-                DebugMenu: null,
-                SharePanel: null,
-                MenuPanel: null,
-                TopPanel: null,
-                NavigationPanel: null,
-              }}
-            />
+            {/* TLDraw Layer - positioned absolutely but will scroll with content */}
+            <div
+              ref={tldrawContainerRef}
+              className={`
+                absolute inset-0 bg-transparent pointer-events-none
+                ${isDrawingMode ? "z-20" : "z-10"}
+              `}
+            >
+              <div
+                className={`
+                  w-full h-full min-h-full
+                  ${isTextMode ? "tldraw-disabled" : ""}
+                  ${isDrawingMode ? "pointer-events-auto" : "pointer-events-none"}
+                `}
+                style={{ minHeight: "600px" }} // Ensure minimum height for drawing
+              >
+                <Tldraw
+                  store={tldrawStore}
+                  onMount={handleTldrawMount}
+                  autoFocus={false}
+                  components={{
+                    MainMenu: null,
+                    QuickActions: null,
+                    HelpMenu: null,
+                    DebugMenu: null,
+                    SharePanel: null,
+                    MenuPanel: null,
+                    TopPanel: null,
+                    NavigationPanel: null,
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 

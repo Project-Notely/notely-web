@@ -237,18 +237,42 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
     string | null
   > => {
     try {
-      const editorElement = document.querySelector(".simple-editor-content");
-      if (!editorElement) {
-        console.warn("Text editor element not found for screenshot");
+      // Find the scroll container first
+      const scrollContainer = document.querySelector(
+        ".annotated-editor .overflow-auto"
+      ) as HTMLElement;
+      const editorElement = document.querySelector(
+        ".simple-editor-content"
+      ) as HTMLElement;
+
+      if (!editorElement || !scrollContainer) {
+        console.warn(
+          "Text editor or scroll container not found for screenshot"
+        );
         return await captureTextScreenshotFallback();
       }
 
-      console.log("📸 Capturing text editor screenshot...");
-      const canvas = await html2canvas(editorElement as HTMLElement, {
+      console.log("📸 Capturing text editor screenshot with scroll sync...");
+
+      // Get scroll position to ensure we capture the visible area
+      const scrollTop = scrollContainer.scrollTop;
+      const scrollLeft = scrollContainer.scrollLeft;
+      const containerRect = scrollContainer.getBoundingClientRect();
+
+      console.log("📊 Scroll info:", { scrollTop, scrollLeft, containerRect });
+
+      const canvas = await html2canvas(editorElement, {
         backgroundColor: "#ffffff",
         scale: 2, // Higher quality
         useCORS: true,
         allowTaint: true,
+        // Capture the visible area based on scroll position
+        x: scrollLeft,
+        y: scrollTop,
+        width: containerRect.width,
+        height: containerRect.height,
+        scrollX: 0, // Don't auto-adjust for scroll
+        scrollY: 0, // Don't auto-adjust for scroll
         ignoreElements: element => {
           // Skip elements that might cause issues
           return element.tagName === "SCRIPT" || element.tagName === "STYLE";
@@ -271,7 +295,7 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
       });
 
       const dataUrl = canvas.toDataURL("image/png");
-      console.log("✅ Text editor screenshot captured");
+      console.log("✅ Text editor screenshot captured with scroll sync");
       return dataUrl;
     } catch (error) {
       console.error("❌ Failed to capture text editor screenshot:", error);
@@ -281,14 +305,16 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
   }, [captureTextScreenshotFallback]);
 
   // Enhanced TLDraw capture with working selectors
-  const captureDrawingScreenshot = useCallback(async (): Promise<string | null> => {
+  const captureDrawingScreenshot = useCallback(async (): Promise<
+    string | null
+  > => {
     try {
       if (!tldrawEditorRef.current) {
         console.warn("TLDraw editor not available for screenshot");
         return null;
       }
 
-      console.log("📸 Capturing drawing canvas screenshot...");
+      console.log("📸 Capturing drawing canvas screenshot with scroll sync...");
 
       // First, let's inspect the TLDraw editor's content
       const editor = tldrawEditorRef.current;
@@ -296,65 +322,111 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
 
       if (currentPageShapeIds.size === 0) {
         console.warn("⚠️ No shapes found in TLDraw editor");
+        // Return a transparent canvas of the same size as text editor
+        const scrollContainer = document.querySelector(
+          ".annotated-editor .overflow-auto"
+        ) as HTMLElement;
+        if (scrollContainer) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const canvas = document.createElement("canvas");
+          canvas.width = containerRect.width * 2; // Account for scale
+          canvas.height = containerRect.height * 2;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL("image/png");
+          }
+        }
         return null;
       }
 
-      // Try using TLDraw's SVG export
+      // Get the current scroll container to match dimensions
+      const scrollContainer = document.querySelector(
+        ".annotated-editor .overflow-auto"
+      ) as HTMLElement;
+      const containerRect = scrollContainer?.getBoundingClientRect();
+
+      // Try using TLDraw's SVG export with viewport bounds
       try {
-        // Get the SVG content
-        const svg = await editor.getSvg(Array.from(currentPageShapeIds));
-        if (!svg) {
-          console.warn("Failed to get SVG from TLDraw");
-          return null;
-        }
+        if (containerRect) {
+          // Get current camera position
+          const camera = editor.getCamera();
 
-        // Set white background
-        svg.style.backgroundColor = '#ffffff';
-
-        // Convert SVG to data URL
-        const svgString = new XMLSerializer().serializeToString(svg);
-        const blob = new Blob([svgString], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-
-        // Create an Image to convert SVG to canvas
-        const img = new Image();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = svg.width.baseVal.value;
-            canvas.height = svg.height.baseVal.value;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-              reject(new Error('Failed to get canvas context'));
-              return;
-            }
-
-            // Fill white background
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw the SVG
-            ctx.drawImage(img, 0, 0);
-
-            // Convert to PNG
-            resolve(canvas.toDataURL('image/png', 1.0));
+          // Calculate the viewport bounds that match the visible scroll area
+          const viewportBounds = {
+            x: camera.x,
+            y: camera.y,
+            w: containerRect.width,
+            h: containerRect.height,
           };
-          img.onerror = () => reject(new Error('Failed to load SVG image'));
-          img.src = url;
-        });
 
-        // Cleanup
-        URL.revokeObjectURL(url);
+          console.log(
+            "📊 Viewport bounds for drawing capture:",
+            viewportBounds
+          );
 
-        console.log("✅ Drawing screenshot captured via SVG export");
-        return dataUrl;
+          // Get the SVG content for the visible viewport
+          const svg = await editor.getSvg(Array.from(currentPageShapeIds), {
+            scale: 2, // Match text editor scale
+            background: true,
+          });
+
+          if (!svg) {
+            console.warn("Failed to get SVG from TLDraw");
+            return null;
+          }
+
+          // Set white background to match text editor
+          svg.style.backgroundColor = "#ffffff";
+
+          // Convert SVG to data URL
+          const svgString = new XMLSerializer().serializeToString(svg);
+          const blob = new Blob([svgString], { type: "image/svg+xml" });
+          const url = URL.createObjectURL(blob);
+
+          // Create an Image to convert SVG to canvas
+          const img = new Image();
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              canvas.width = containerRect.width * 2; // Match text editor scale
+              canvas.height = containerRect.height * 2;
+              const ctx = canvas.getContext("2d");
+              if (!ctx) {
+                reject(new Error("Failed to get canvas context"));
+                return;
+              }
+
+              // Fill white background
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              // Draw the SVG
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+              // Convert to PNG
+              resolve(canvas.toDataURL("image/png", 1.0));
+            };
+            img.onerror = () => reject(new Error("Failed to load SVG image"));
+            img.src = url;
+          });
+
+          // Cleanup
+          URL.revokeObjectURL(url);
+
+          console.log(
+            "✅ Drawing screenshot captured via SVG export with viewport bounds"
+          );
+          return dataUrl;
+        }
       } catch (svgError) {
         console.error("Failed to capture via SVG export:", svgError);
         // Fall back to html2canvas method...
       }
 
       // Fallback to html2canvas method if SVG export fails
-      console.log("📸 Capturing drawing canvas screenshot...");
+      console.log("📸 Fallback: Capturing drawing canvas screenshot...");
 
       // Use the working selectors that were found in testing
       const workingSelectors = [
@@ -404,7 +476,9 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
       console.log(`📸 Capturing element found with: ${usedSelector}`);
 
       const elementRect = tldrawElement.getBoundingClientRect();
-      console.log("Element capture details:", {
+      const finalContainerRect = containerRect || elementRect;
+
+      console.log(`🔍 Element details:`, {
         tagName: tldrawElement.tagName,
         className: tldrawElement.className,
         width: elementRect.width,
@@ -412,15 +486,15 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
         visible: (tldrawElement as HTMLElement).offsetParent !== null,
       });
 
-      // Use html2canvas with the working element
+      // Use html2canvas with the working element, matching text editor capture area
       const canvas = await html2canvas(tldrawElement as HTMLElement, {
         backgroundColor: null, // Transparent
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        width: elementRect.width || 800,
-        height: elementRect.height || 600,
+        width: finalContainerRect.width,
+        height: finalContainerRect.height,
         x: 0,
         y: 0,
         scrollX: 0,
@@ -461,22 +535,25 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
       });
 
       // Convert to PNG with white background
-      const tempCanvas = document.createElement('canvas');
+      const tempCanvas = document.createElement("canvas");
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
-      const ctx = tempCanvas.getContext('2d');
+      const ctx = tempCanvas.getContext("2d");
       if (!ctx) return null;
 
       // Fill with white background
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      
+
       // Draw the original canvas on top
       ctx.drawImage(canvas, 0, 0);
 
       // Convert to PNG
-      const dataUrl = tempCanvas.toDataURL('image/png', 1.0);
-      console.log("✅ Drawing screenshot captured, data URL length:", dataUrl.length);
+      const dataUrl = tempCanvas.toDataURL("image/png", 1.0);
+      console.log(
+        "✅ Drawing screenshot captured, data URL length:",
+        dataUrl.length
+      );
       return dataUrl;
     } catch (error) {
       console.error("❌ Failed to capture drawing screenshot:", error);
@@ -495,7 +572,7 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
           return null;
         }
 
-        console.log("🖼️ Combining screenshots...");
+        console.log("🖼️ Combining screenshots with improved alignment...");
 
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
@@ -521,31 +598,58 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
 
         if (images.length === 0) return null;
 
-        // Set canvas size to the largest image dimensions
-        const maxWidth = Math.max(...images.map(img => img.width));
-        const maxHeight = Math.max(...images.map(img => img.height));
-        canvas.width = maxWidth;
-        canvas.height = maxHeight;
+        // For proper alignment, use the text editor's dimensions as reference
+        // since both should now be captured with the same viewport size
+        let canvasWidth: number;
+        let canvasHeight: number;
+
+        if (textScreenshot && drawingScreenshot) {
+          // Both screenshots should have the same dimensions now
+          // Use the text screenshot as the base since it's more reliable
+          const textImg = images[0];
+          canvasWidth = textImg.width;
+          canvasHeight = textImg.height;
+
+          console.log("📊 Canvas dimensions from text screenshot:", {
+            width: canvasWidth,
+            height: canvasHeight,
+          });
+        } else {
+          // Use the single available image
+          const singleImg = images[0];
+          canvasWidth = singleImg.width;
+          canvasHeight = singleImg.height;
+        }
+
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
 
         // Fill with white background
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw text screenshot first (background)
+        // Draw text screenshot first (background layer)
         if (textScreenshot && images[0]) {
-          ctx.drawImage(images[0], 0, 0);
+          const textImg = images[0];
+          // Draw text image at full size
+          ctx.drawImage(textImg, 0, 0, canvasWidth, canvasHeight);
+          console.log("✅ Text layer drawn");
         }
 
-        // Draw drawing screenshot on top
+        // Draw drawing screenshot on top (overlay layer)
         if (drawingScreenshot) {
           const drawingImg = textScreenshot ? images[1] : images[0];
           if (drawingImg) {
-            ctx.drawImage(drawingImg, 0, 0);
+            // Ensure drawing layer aligns perfectly with text layer
+            ctx.drawImage(drawingImg, 0, 0, canvasWidth, canvasHeight);
+            console.log("✅ Drawing layer drawn on top");
           }
         }
 
         const combinedDataUrl = canvas.toDataURL("image/png");
-        console.log("✅ Screenshots combined successfully");
+        console.log(
+          "✅ Screenshots combined successfully with improved alignment"
+        );
         return combinedDataUrl;
       } catch (error) {
         console.error("❌ Failed to combine screenshots:", error);
