@@ -87,6 +87,50 @@ export interface DrawingCanvasProps {
   initialDrawing?: DrawingData;
 }
 
+// Text Content Types
+export interface TextContent {
+  type: "doc";
+  content?: any[];
+}
+
+export interface AnnotatedDocument {
+  id?: string;
+  textContent: TextContent;
+  drawingContent?: any; // TLDraw snapshot
+  metadata: {
+    title?: string;
+    description?: string;
+    created: number;
+    modified: number;
+    version: string;
+  };
+}
+
+export interface SaveAnnotatedDocumentRequest {
+  document: AnnotatedDocument;
+  userId?: string;
+  title?: string;
+  description?: string;
+}
+
+export interface SaveAnnotatedDocumentResponse {
+  documentId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoadAnnotatedDocumentResponse {
+  document: AnnotatedDocument;
+  metadata: {
+    id: string;
+    userId: string;
+    title: string;
+    description: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 export interface PixiDrawingServiceConfig {
   width: number;
   height: number;
