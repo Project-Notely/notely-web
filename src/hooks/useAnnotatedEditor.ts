@@ -281,9 +281,7 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
   }, [captureTextScreenshotFallback]);
 
   // Enhanced TLDraw capture with working selectors
-  const captureDrawingScreenshot = useCallback(async (): Promise<
-    string | null
-  > => {
+  const captureDrawingScreenshot = useCallback(async (): Promise<string | null> => {
     try {
       if (!tldrawEditorRef.current) {
         console.warn("TLDraw editor not available for screenshot");
@@ -296,21 +294,67 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
       const editor = tldrawEditorRef.current;
       const currentPageShapeIds = editor.getCurrentPageShapeIds();
 
-      console.log("🎨 TLDraw Editor Content Analysis:", {
-        shapeCount: currentPageShapeIds.size,
-        shapeIds: Array.from(currentPageShapeIds),
-        hasContent: currentPageShapeIds.size > 0,
-      });
-
-      // If there are no shapes, return null
       if (currentPageShapeIds.size === 0) {
-        console.warn(
-          "⚠️ No shapes found in TLDraw editor, cannot capture screenshot"
-        );
+        console.warn("⚠️ No shapes found in TLDraw editor");
         return null;
       }
 
-      console.log("🔍 Starting TLDraw element detection...");
+      // Try using TLDraw's SVG export
+      try {
+        // Get the SVG content
+        const svg = await editor.getSvg(Array.from(currentPageShapeIds));
+        if (!svg) {
+          console.warn("Failed to get SVG from TLDraw");
+          return null;
+        }
+
+        // Set white background
+        svg.style.backgroundColor = '#ffffff';
+
+        // Convert SVG to data URL
+        const svgString = new XMLSerializer().serializeToString(svg);
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+
+        // Create an Image to convert SVG to canvas
+        const img = new Image();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = svg.width.baseVal.value;
+            canvas.height = svg.height.baseVal.value;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Failed to get canvas context'));
+              return;
+            }
+
+            // Fill white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the SVG
+            ctx.drawImage(img, 0, 0);
+
+            // Convert to PNG
+            resolve(canvas.toDataURL('image/png', 1.0));
+          };
+          img.onerror = () => reject(new Error('Failed to load SVG image'));
+          img.src = url;
+        });
+
+        // Cleanup
+        URL.revokeObjectURL(url);
+
+        console.log("✅ Drawing screenshot captured via SVG export");
+        return dataUrl;
+      } catch (svgError) {
+        console.error("Failed to capture via SVG export:", svgError);
+        // Fall back to html2canvas method...
+      }
+
+      // Fallback to html2canvas method if SVG export fails
+      console.log("📸 Capturing drawing canvas screenshot...");
 
       // Use the working selectors that were found in testing
       const workingSelectors = [
@@ -413,27 +457,26 @@ export const useAnnotatedEditor = (config: AnnotatedEditorConfig = {}) => {
             }
           `;
           clonedDoc.head.appendChild(style);
-
-          // Force visibility of drawing elements
-          const drawingElements = clonedDoc.querySelectorAll(
-            ".tl-shape, .tl-shape *, svg, svg *"
-          );
-          drawingElements.forEach(el => {
-            const element = el as HTMLElement;
-            element.style.visibility = "visible";
-            element.style.opacity = "1";
-            element.style.display =
-              element.style.display === "none"
-                ? "block"
-                : element.style.display;
-          });
         },
       });
 
-      const dataUrl = canvas.toDataURL("image/png");
-      console.log("✅ Drawing canvas screenshot captured successfully!");
-      console.log(`📊 Screenshot size: ${canvas.width}x${canvas.height}`);
+      // Convert to PNG with white background
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const ctx = tempCanvas.getContext('2d');
+      if (!ctx) return null;
 
+      // Fill with white background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      
+      // Draw the original canvas on top
+      ctx.drawImage(canvas, 0, 0);
+
+      // Convert to PNG
+      const dataUrl = tempCanvas.toDataURL('image/png', 1.0);
+      console.log("✅ Drawing screenshot captured, data URL length:", dataUrl.length);
       return dataUrl;
     } catch (error) {
       console.error("❌ Failed to capture drawing screenshot:", error);
