@@ -65,12 +65,9 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
     markAsChanged,
     getContentPreview,
     analyzeDocument,
-    debugTldrawElements,
-    testTldrawCapture,
-    inspectTldrawContent,
     downloadScreenshot,
     clearDebugScreenshots,
-  } = useAnnotatedEditor({ userId });
+  } = useAnnotatedEditor({ userId, containerRef });
 
   // Store TLDraw editor reference
   const handleTldrawMount = useCallback(
@@ -96,13 +93,31 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
 
   // Scroll synchronization between text editor and TLDraw using camera
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
+    // CRITICAL FIX: Sync to the inner content wrapper where text actually scrolls
+    // Not the outer scroll container which was causing misalignment
+    const innerScrollContainer = document.querySelector(
+      ".annotated-editor .content-wrapper"
+    ) as HTMLElement;
 
-    if (!scrollContainer) return;
+    if (!innerScrollContainer) {
+      console.warn(
+        "Inner scroll container (.content-wrapper) not found for TLDraw sync"
+      );
+      return;
+    }
+
+    console.log(
+      "🔄 [DEBUG] Syncing TLDraw camera to inner content wrapper scroll"
+    );
 
     const handleScroll = () => {
-      const scrollTop = scrollContainer.scrollTop;
-      const scrollLeft = scrollContainer.scrollLeft;
+      const scrollTop = innerScrollContainer.scrollTop;
+      const scrollLeft = innerScrollContainer.scrollLeft;
+
+      console.log("📍 [DEBUG] Inner scroll changed:", {
+        scrollTop,
+        scrollLeft,
+      });
 
       // Get the current TLDraw editor instance
       const tldrawEditor = setTldrawEditor as unknown as {
@@ -110,20 +125,24 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
       };
 
       if (tldrawEditor.current) {
-        // Update TLDraw camera to follow the scroll
+        // Update TLDraw camera to follow the inner scroll (where text actually moves)
         const currentCamera = tldrawEditor.current.getCamera();
         tldrawEditor.current.setCamera({
           ...currentCamera,
           x: -scrollLeft,
           y: -scrollTop,
         });
+        console.log("📷 [DEBUG] TLDraw camera updated:", {
+          x: -scrollLeft,
+          y: -scrollTop,
+        });
       }
     };
 
-    scrollContainer.addEventListener("scroll", handleScroll);
+    innerScrollContainer.addEventListener("scroll", handleScroll);
 
     return () => {
-      scrollContainer.removeEventListener("scroll", handleScroll);
+      innerScrollContainer.removeEventListener("scroll", handleScroll);
     };
   }, [setTldrawEditor]);
 
@@ -163,64 +182,6 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
       console.log("Analysis failed");
     }
   }, [analyzeDocument]);
-
-  // Debug function for development
-  const handleDebug = useCallback(() => {
-    console.log("🔍 [DEBUG] Manual debug trigger");
-    debugTldrawElements();
-  }, [debugTldrawElements]);
-
-  // Test TLDraw capture function
-  const handleTestCapture = useCallback(() => {
-    console.log("🧪 [TEST] Manual TLDraw capture test");
-    testTldrawCapture();
-  }, [testTldrawCapture]);
-
-  // Inspect TLDraw content function
-  const handleInspectContent = useCallback(() => {
-    console.log("🔍 [INSPECT] TLDraw content inspection");
-    const contentInfo = inspectTldrawContent();
-    if (contentInfo) {
-      alert(
-        `TLDraw Content: ${contentInfo.shapeCount} shapes found. Check console for details.`
-      );
-    } else {
-      alert("TLDraw editor not available or no content found.");
-    }
-  }, [inspectTldrawContent]);
-
-  // Handle download screenshot
-  const handleDownloadScreenshot = useCallback(
-    (type: "text" | "drawing" | "combined") => {
-      if (!state.debugScreenshots) return;
-
-      const timestamp = new Date(state.debugScreenshots.timestamp)
-        .toISOString()
-        .replace(/[:.]/g, "-");
-      let dataUrl: string | undefined;
-      let filename: string;
-
-      switch (type) {
-        case "text":
-          dataUrl = state.debugScreenshots.textCanvas;
-          filename = `text-screenshot-${timestamp}.png`;
-          break;
-        case "drawing":
-          dataUrl = state.debugScreenshots.drawingCanvas;
-          filename = `drawing-screenshot-${timestamp}.png`;
-          break;
-        case "combined":
-          dataUrl = state.debugScreenshots.combinedCanvas;
-          filename = `combined-screenshot-${timestamp}.png`;
-          break;
-      }
-
-      if (dataUrl) {
-        downloadScreenshot(dataUrl, filename);
-      }
-    },
-    [state.debugScreenshots, downloadScreenshot]
-  );
 
   // Load initial document
   React.useEffect(() => {
@@ -284,33 +245,6 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
           >
             {isAnalyzing ? "🔍 Analyzing..." : "🔍 Analyze"}
           </button>
-
-          {/* Debug button - only show in development or when there's an error */}
-          {(process.env.NODE_ENV === "development" || state.error) && (
-            <>
-              <button
-                onClick={handleDebug}
-                className='px-3 py-1 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors'
-                disabled={modeState.isTransitioning || isSaving || isAnalyzing}
-              >
-                🔍 Debug
-              </button>
-              <button
-                onClick={handleTestCapture}
-                className='px-2 py-1 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors'
-                disabled={modeState.isTransitioning || isSaving || isAnalyzing}
-              >
-                🧪 Test Capture
-              </button>
-              <button
-                onClick={handleInspectContent}
-                className='px-2 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors'
-                disabled={modeState.isTransitioning || isSaving || isAnalyzing}
-              >
-                🔍 Inspect Content
-              </button>
-            </>
-          )}
 
           {state.hasUnsavedChanges && (
             <button
@@ -393,7 +327,19 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
                     Text Canvas
                   </h5>
                   <button
-                    onClick={() => handleDownloadScreenshot("text")}
+                    onClick={() => {
+                      if (state.debugScreenshots?.textCanvas) {
+                        const timestamp = new Date(
+                          state.debugScreenshots.timestamp
+                        )
+                          .toISOString()
+                          .replace(/[:.]/g, "-");
+                        downloadScreenshot(
+                          state.debugScreenshots.textCanvas,
+                          `text-screenshot-${timestamp}.png`
+                        );
+                      }
+                    }}
                     className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
                   >
                     Download
@@ -416,7 +362,19 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
                     Drawing Canvas
                   </h5>
                   <button
-                    onClick={() => handleDownloadScreenshot("drawing")}
+                    onClick={() => {
+                      if (state.debugScreenshots?.drawingCanvas) {
+                        const timestamp = new Date(
+                          state.debugScreenshots.timestamp
+                        )
+                          .toISOString()
+                          .replace(/[:.]/g, "-");
+                        downloadScreenshot(
+                          state.debugScreenshots.drawingCanvas,
+                          `drawing-screenshot-${timestamp}.png`
+                        );
+                      }
+                    }}
                     className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
                   >
                     Download
@@ -439,7 +397,19 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
                     Combined Canvas
                   </h5>
                   <button
-                    onClick={() => handleDownloadScreenshot("combined")}
+                    onClick={() => {
+                      if (state.debugScreenshots?.combinedCanvas) {
+                        const timestamp = new Date(
+                          state.debugScreenshots.timestamp
+                        )
+                          .toISOString()
+                          .replace(/[:.]/g, "-");
+                        downloadScreenshot(
+                          state.debugScreenshots.combinedCanvas,
+                          `combined-screenshot-${timestamp}.png`
+                        );
+                      }
+                    }}
                     className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
                   >
                     Download
