@@ -1,12 +1,12 @@
 import { useAnalyzeDocument, useSaveDocument } from "@/hooks/useTextQueries";
-import type { AnnotatedDocument, TextContent } from "@/models/types";
+import type {
+  AnalyzeDocumentRequest,
+  AnnotatedDocument,
+  TextContent,
+} from "@/models/types";
 import { Editor as TiptapEditor } from "@tiptap/react";
 import { Editor as TldrawEditor } from "@tldraw/tldraw";
-import html2canvas from "html2canvas";
 import { useCallback, useRef, useState } from "react";
-
-// Interface for text capture positioning info (no longer needed for unified approach)
-// let globalTextCaptureInfo: TextCaptureInfo | null = null;
 
 // Configuration interface for the hook
 interface UseAnnotatedEditorConfig {
@@ -32,12 +32,6 @@ export interface AnnotatedEditorState {
   lastSaved: Date | null;
   error: string | null;
   analysisResult?: AnalysisResult;
-  debugScreenshots?: {
-    textCanvas?: string;
-    drawingCanvas?: string;
-    combinedCanvas?: string;
-    timestamp: number;
-  };
 }
 
 export const useAnnotatedEditor = ({
@@ -89,255 +83,42 @@ export const useAnnotatedEditor = ({
     return tldrawEditorRef.current.getSnapshot();
   }, []);
 
-  // Capture text editor only (without TLDraw interference)
-  const captureTextOnly = useCallback(async (): Promise<string | null> => {
-    try {
-      console.log("📸 [TEXT] Capturing text editor only...");
+  // Get layout information for backend reconstruction
+  const getLayoutInfo = useCallback(() => {
+    const containerElement = containerRef?.current;
+    const contentWrapper = document.querySelector(
+      ".annotated-editor .content-wrapper"
+    ) as HTMLElement;
 
-      // Target the text content wrapper
-      const contentWrapper = document.querySelector(
-        ".annotated-editor .content-wrapper"
-      ) as HTMLElement;
+    if (!containerElement || !contentWrapper) {
+      console.warn("❌ Layout elements not found for analysis");
+      return {
+        containerDimensions: { width: 800, height: 600 },
+        textDimensions: { width: 800, height: 600 },
+        scrollPosition: { x: 0, y: 0 },
+      };
+    }
 
-      if (!contentWrapper) {
-        console.warn("❌ Text content wrapper not found");
-        return null;
-      }
+    const containerRect = containerElement.getBoundingClientRect();
+    const wrapperRect = contentWrapper.getBoundingClientRect();
 
-      const wrapperRect = contentWrapper.getBoundingClientRect();
-      console.log("📊 [TEXT] Content wrapper:", {
+    return {
+      containerDimensions: {
+        width: containerRect.width,
+        height: containerRect.height,
+      },
+      textDimensions: {
         width: wrapperRect.width,
         height: wrapperRect.height,
-      });
+      },
+      scrollPosition: {
+        x: contentWrapper.scrollLeft,
+        y: contentWrapper.scrollTop,
+      },
+    };
+  }, [containerRef]);
 
-      const canvas = await html2canvas(contentWrapper, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        width: wrapperRect.width,
-        height: wrapperRect.height,
-        scrollX: 0,
-        scrollY: 0,
-        ignoreElements: element => {
-          // Ignore ALL TLDraw elements - we'll capture them separately
-          const src = element.getAttribute("src");
-          return (
-            element.tagName === "SCRIPT" ||
-            element.tagName === "STYLE" ||
-            element.classList.contains("tldraw") ||
-            element.classList.contains("tl-canvas") ||
-            element.getAttribute("data-testid") === "canvas" ||
-            element.classList.contains("tl-ui") ||
-            Boolean(src && src.includes("placeholder"))
-          );
-        },
-        onclone: clonedDoc => {
-          const style = clonedDoc.createElement("style");
-          style.textContent = `
-            /* Clean text rendering */
-            .tiptap, .ProseMirror {
-              font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif !important;
-              color: #1f2937 !important;
-              background-color: white !important;
-            }
-
-            /* Hide all TLDraw elements completely */
-            .tldraw, .tl-canvas, [data-testid="canvas"], [class*="tl-"] {
-              display: none !important;
-            }
-
-            /* Remove placeholder images */
-            img[src*="placeholder"] {
-              display: none !important;
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-        },
-      });
-
-      const dataUrl = canvas.toDataURL("image/png", 1.0);
-      console.log("✅ [TEXT] Text captured successfully");
-      return dataUrl;
-    } catch (error) {
-      console.error("❌ [TEXT] Text capture failed:", error);
-      return null;
-    }
-  }, []);
-
-  // Capture TLDraw using direct SVG export (bypass broken helper)
-  const captureDrawingNative = useCallback(async (): Promise<string | null> => {
-    try {
-      if (!tldrawEditorRef.current) {
-        console.log("📊 [DRAWING] No TLDraw editor available");
-        return null;
-      }
-
-      console.log("📸 [DRAWING] Using TLDraw direct SVG export...");
-      const editor = tldrawEditorRef.current;
-      const shapes = editor.getCurrentPageShapes();
-
-      if (shapes.length === 0) {
-        console.log("📊 [DRAWING] No shapes to export");
-        return null;
-      }
-
-      console.log("📊 [DRAWING] Exporting", shapes.length, "shapes");
-
-      // Use TLDraw's basic getSvg method
-      const svg = await editor.getSvg(
-        Array.from(editor.getCurrentPageShapeIds()),
-        {
-          scale: 2,
-          background: false,
-        }
-      );
-
-      if (!svg) {
-        console.warn("❌ [DRAWING] TLDraw SVG export returned null");
-        return null;
-      }
-
-      // Convert SVG to PNG using canvas
-      const svgString = new XMLSerializer().serializeToString(svg);
-      const svgBlob = new Blob([svgString], { type: "image/svg+xml" });
-      const svgUrl = URL.createObjectURL(svgBlob);
-
-      const img = new Image();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            reject(new Error("Failed to get canvas context"));
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0);
-          const dataUrl = canvas.toDataURL("image/png", 1.0);
-          URL.revokeObjectURL(svgUrl);
-          resolve(dataUrl);
-        };
-        img.onerror = () => {
-          URL.revokeObjectURL(svgUrl);
-          reject(new Error("Failed to load SVG image"));
-        };
-        img.src = svgUrl;
-      });
-
-      console.log("✅ [DRAWING] Drawing exported via direct TLDraw SVG method");
-      return dataUrl;
-    } catch (error) {
-      console.error("❌ [DRAWING] Direct export failed:", error);
-      return null;
-    }
-  }, []);
-
-  // Combine text and drawing with proper positioning
-  const combineTextAndDrawing = useCallback(
-    async (textDataUrl: string, drawingDataUrl?: string): Promise<string> => {
-      console.log("🖼️ [COMBINE] Combining text and drawing...");
-
-      return new Promise((resolve, reject) => {
-        const textImg = new Image();
-        textImg.onload = () => {
-          const canvas = document.createElement("canvas");
-          canvas.width = textImg.width;
-          canvas.height = textImg.height;
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            reject(new Error("Failed to get canvas context"));
-            return;
-          }
-
-          // Draw text as background
-          ctx.drawImage(textImg, 0, 0);
-
-          if (drawingDataUrl) {
-            const drawingImg = new Image();
-            drawingImg.onload = () => {
-              // Draw drawing on top with proper positioning
-              // TLDraw export maintains proper coordinates
-              ctx.globalCompositeOperation = "source-over";
-              ctx.drawImage(drawingImg, 0, 0, canvas.width, canvas.height);
-
-              const combinedDataUrl = canvas.toDataURL("image/png", 1.0);
-              console.log(
-                "✅ [COMBINE] Text and drawing combined successfully"
-              );
-              resolve(combinedDataUrl);
-            };
-            drawingImg.onerror = () =>
-              reject(new Error("Failed to load drawing"));
-            drawingImg.src = drawingDataUrl;
-          } else {
-            // No drawing, just return text
-            const combinedDataUrl = canvas.toDataURL("image/png", 1.0);
-            console.log("✅ [COMBINE] Text only (no drawing)");
-            resolve(combinedDataUrl);
-          }
-        };
-        textImg.onerror = () => reject(new Error("Failed to load text"));
-        textImg.src = textDataUrl;
-      });
-    },
-    []
-  );
-
-  // Main unified capture using dual approach
-  const captureUnifiedScreenshot = useCallback(async (): Promise<
-    string | null
-  > => {
-    try {
-      console.log("📸 [UNIFIED] Starting dual capture approach...");
-
-      // Capture text and drawing separately
-      const [textCapture, drawingCapture] = await Promise.all([
-        captureTextOnly(),
-        captureDrawingNative(),
-      ]);
-
-      if (!textCapture) {
-        console.error("❌ [UNIFIED] Text capture failed");
-        return null;
-      }
-
-      console.log("📊 [UNIFIED] Capture results:", {
-        hasText: !!textCapture,
-        hasDrawing: !!drawingCapture,
-      });
-
-      // Combine them properly
-      const combinedCapture = await combineTextAndDrawing(
-        textCapture,
-        drawingCapture || undefined
-      );
-
-      console.log("✅ [UNIFIED] Dual capture completed successfully!");
-      return combinedCapture;
-    } catch (error) {
-      console.error("❌ [UNIFIED] Dual capture failed:", error);
-      return null;
-    }
-  }, [captureTextOnly, captureDrawingNative, combineTextAndDrawing]);
-
-  // Enhanced TLDraw capture with working selectors
-  // REMOVED: No longer needed - unified capture handles everything
-  // const captureDrawingScreenshot = useCallback(async (): Promise<string | null> => {
-  //   // This function is obsolete with unified container capture
-  // }, []);
-
-  // Combine text and drawing screenshots
-  // REMOVED: No longer needed - unified capture provides complete result
-  // const combineBothScreenshots = useCallback(
-  //   // This function is obsolete with unified container capture
-  // ), []);
-
-  // Utility function to download a screenshot
+  // Utility function to download a screenshot (kept for legacy downloads)
   const downloadScreenshot = useCallback(
     (dataUrl: string, filename: string) => {
       const link = document.createElement("a");
@@ -350,76 +131,81 @@ export const useAnnotatedEditor = ({
     []
   );
 
-  // Enhanced analyze function with screenshot storage
-  const analyzeDocument = useCallback(
-    async (options?: {
-      analysisType?: string;
-      includeText?: boolean;
-      includeDrawing?: boolean;
-    }): Promise<boolean> => {
-      console.log("🔍 Starting document analysis...");
+  // Enhanced analyze function with raw data
+  const analyzeDocument = useCallback(async (): Promise<boolean> => {
+    console.log("🔍 Starting document analysis with raw data...");
 
-      setState(prev => ({ ...prev, isAnalyzing: true, error: null }));
+    setState(prev => ({ ...prev, isAnalyzing: true, error: null }));
 
-      try {
-        // Capture screenshots for debugging
-        const unifiedScreenshot = await captureUnifiedScreenshot();
+    try {
+      // Gather all data needed for backend reconstruction
+      const textContent = getTextContent();
+      const drawingContent = getDrawingContent();
+      const layoutInfo = getLayoutInfo();
 
-        // Store screenshots for debugging
-        setState(prev => ({
-          ...prev,
-          debugScreenshots: {
-            timestamp: Date.now(),
-            textCanvas: unifiedScreenshot || undefined, // Use unified for text display
-            drawingCanvas: undefined, // No separate drawing needed
-            combinedCanvas: unifiedScreenshot || undefined, // Unified IS the combined result
-          },
-        }));
+      console.log("📊 [RAW-DATA] Preparing analysis request:", {
+        hasTextContent:
+          !!textContent &&
+          textContent.content &&
+          textContent.content.length > 0,
+        hasDrawingContent: !!drawingContent,
+        layoutInfo,
+      });
 
-        if (!unifiedScreenshot) {
-          throw new Error("Failed to capture screenshot");
-        }
+      // Create analysis request
+      const analysisRequest: AnalyzeDocumentRequest = {
+        textContent,
+        drawingContent,
+        layoutInfo,
+        userId,
+        options: {
+          analysisType: "raw_data_reconstruction",
+          includeText: true,
+          includeDrawing: true,
+        },
+      };
 
-        // Simulate successful analysis with unified capture
-        const mockAnalysisResult = {
-          analysisId: `unified_analysis_${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          result: {
-            captureMethod: "unified_container",
-            hasContent: true,
-            status: "completed",
-          },
+      // Send to backend using React Query
+      const result = await analyzeDocumentMutation.mutateAsync(analysisRequest);
+
+      if (result.success && result.data) {
+        const analysisResult = {
+          analysisId: result.data.analysisId,
+          timestamp: result.data.timestamp,
+          result: result.data.result,
         };
 
         setState(prev => ({
           ...prev,
           isAnalyzing: false,
-          analysisResult: mockAnalysisResult,
+          analysisResult,
           lastSaved: new Date(),
         }));
 
-        console.log("✅ [UNIFIED] Screenshot capture completed successfully");
+        console.log(
+          "✅ [RAW-DATA] Analysis completed successfully:",
+          analysisResult
+        );
         return true;
-      } catch (error) {
-        console.error("❌ Screenshot capture failed:", error);
-        setState(prev => ({
-          ...prev,
-          isAnalyzing: false,
-          error: `Screenshot capture failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-        }));
-        return false;
+      } else {
+        throw new Error(result.error || "Analysis failed");
       }
-    },
-    [captureUnifiedScreenshot]
-  );
-
-  // Clear debug screenshots
-  const clearDebugScreenshots = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      debugScreenshots: undefined,
-    }));
-  }, []);
+    } catch (error) {
+      console.error("❌ Raw data analysis failed:", error);
+      setState(prev => ({
+        ...prev,
+        isAnalyzing: false,
+        error: `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      }));
+      return false;
+    }
+  }, [
+    getTextContent,
+    getDrawingContent,
+    getLayoutInfo,
+    userId,
+    analyzeDocumentMutation,
+  ]);
 
   // Create annotated document from current state
   const createDocument = useCallback(
@@ -443,33 +229,27 @@ export const useAnnotatedEditor = ({
     [getTextContent, getDrawingContent]
   );
 
-  // Save document
+  // Save document to backend
   const saveDocument = useCallback(
     async (title?: string, description?: string): Promise<boolean> => {
-      console.log("🚀 [ANNOTATED-EDITOR] Starting save process...", {
-        title,
-        description,
-      });
-
       setState(prev => ({ ...prev, isSaving: true, error: null }));
 
       try {
         const document = createDocument(title, description);
 
-        console.log("📊 [ANNOTATED-EDITOR] Document data prepared:", {
-          textContentLength: JSON.stringify(document.textContent).length,
+        console.log("💾 Saving document...", {
+          hasText: !!document.textContent,
           hasDrawing: !!document.drawingContent,
-          userId: userId,
-        });
-
-        const result = await saveDocumentMutation.mutateAsync({
-          document,
-          userId: userId,
           title,
           description,
         });
 
-        console.log("✅ [ANNOTATED-EDITOR] API response:", result);
+        const result = await saveDocumentMutation.mutateAsync({
+          document,
+          userId,
+          title,
+          description,
+        });
 
         if (result.success) {
           setState(prev => ({
@@ -479,45 +259,41 @@ export const useAnnotatedEditor = ({
             lastSaved: new Date(),
             error: null,
           }));
-          console.log("✅ [ANNOTATED-EDITOR] Save successful!");
+
+          console.log("✅ Document saved successfully");
           return true;
         } else {
-          console.error("❌ [ANNOTATED-EDITOR] Save failed:", result.error);
-          setState(prev => ({
-            ...prev,
-            isSaving: false,
-            error: result.error || "Failed to save document",
-          }));
-          return false;
+          throw new Error(result.error || "Save failed");
         }
       } catch (error) {
-        console.error("❌ [ANNOTATED-EDITOR] Exception during save:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
+        console.error("❌ Save failed:", error);
         setState(prev => ({
           ...prev,
           isSaving: false,
-          error: errorMessage,
+          error: `Save failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         }));
         return false;
       }
     },
-    [userId, createDocument, saveDocumentMutation]
+    [createDocument, saveDocumentMutation, userId]
   );
 
   // Load document into editors
-  const loadDocument = useCallback((document: AnnotatedDocument): void => {
-    console.log("🚀 [ANNOTATED-EDITOR] Loading document...", document);
-
+  const loadDocument = useCallback((document: AnnotatedDocument) => {
     try {
-      // Load text content into Tiptap
+      console.log("📖 Loading document...", {
+        hasText: !!document.textContent,
+        hasDrawing: !!document.drawingContent,
+      });
+
+      // Load text content
       if (tiptapEditorRef.current && document.textContent) {
         tiptapEditorRef.current.commands.setContent(document.textContent);
       }
 
-      // Load drawing content into TLDraw
+      // Load drawing content
       if (tldrawEditorRef.current && document.drawingContent) {
-        tldrawEditorRef.current.store.loadSnapshot(document.drawingContent);
+        tldrawEditorRef.current.loadSnapshot(document.drawingContent);
       }
 
       setState(prev => ({
@@ -527,51 +303,70 @@ export const useAnnotatedEditor = ({
         error: null,
       }));
 
-      console.log("✅ [ANNOTATED-EDITOR] Document loaded successfully");
+      console.log("✅ Document loaded successfully");
     } catch (error) {
-      console.error("❌ [ANNOTATED-EDITOR] Failed to load document:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to load document";
-      setState(prev => ({ ...prev, error: errorMessage }));
+      console.error("❌ Load failed:", error);
+      setState(prev => ({
+        ...prev,
+        error: `Load failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      }));
     }
   }, []);
 
-  // Clear both editors
+  // Clear all content
   const clearContent = useCallback(() => {
-    if (tiptapEditorRef.current) {
-      tiptapEditorRef.current.commands.clearContent();
-    }
+    try {
+      console.log("🗑️ Clearing all content...");
 
-    if (tldrawEditorRef.current) {
-      tldrawEditorRef.current.selectAll();
-      tldrawEditorRef.current.deleteShapes(
-        tldrawEditorRef.current.getSelectedShapeIds()
-      );
-    }
+      // Clear text editor
+      if (tiptapEditorRef.current) {
+        tiptapEditorRef.current.commands.clearContent();
+      }
 
-    setState(prev => ({
-      ...prev,
-      hasUnsavedChanges: false,
-      lastSaved: null,
-      error: null,
-    }));
+      // Clear drawing editor
+      if (tldrawEditorRef.current) {
+        tldrawEditorRef.current.deleteShapes(
+          Array.from(tldrawEditorRef.current.getCurrentPageShapeIds())
+        );
+      }
+
+      setState(prev => ({
+        ...prev,
+        hasUnsavedChanges: false,
+        lastSaved: null,
+        error: null,
+        analysisResult: undefined,
+      }));
+
+      console.log("✅ Content cleared successfully");
+    } catch (error) {
+      console.error("❌ Clear failed:", error);
+      setState(prev => ({
+        ...prev,
+        error: `Clear failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      }));
+    }
   }, []);
 
-  // Mark as having unsaved changes
+  // Mark content as changed
   const markAsChanged = useCallback(() => {
     setState(prev => ({ ...prev, hasUnsavedChanges: true }));
   }, []);
 
-  // Get content preview (for display purposes)
-  const getContentPreview = useCallback((): string => {
+  // Get content preview
+  const getContentPreview = useCallback(() => {
     const textContent = getTextContent();
 
-    // Extract plain text from the document
-    const extractText = (content: TextNode[]): string => {
+    if (!textContent || !textContent.content) {
+      return "Empty document";
+    }
+
+    // Extract plain text from structured content
+    const extractText = (nodes: TextNode[]): string => {
       let text = "";
-      content?.forEach((node: TextNode) => {
-        if (node.type === "text") {
-          text += node.text || "";
+      nodes.forEach(node => {
+        if (node.type === "text" && node.text) {
+          text += node.text;
         } else if (node.content) {
           text += extractText(node.content);
         }
@@ -587,6 +382,7 @@ export const useAnnotatedEditor = ({
     state,
     isSaving: state.isSaving,
     isAnalyzing: state.isAnalyzing,
+    tiptapEditorRef, // Expose the editor ref
     setTiptapEditor,
     setTldrawEditor,
     saveDocument,
@@ -596,6 +392,5 @@ export const useAnnotatedEditor = ({
     getContentPreview,
     analyzeDocument,
     downloadScreenshot,
-    clearDebugScreenshots,
   };
 };

@@ -1,4 +1,7 @@
-import type { SaveAnnotatedDocumentRequest } from "@/models/types";
+import type {
+  AnalyzeDocumentRequest,
+  SaveAnnotatedDocumentRequest,
+} from "@/models/types";
 import { textApiService } from "@/services/api/textApiService";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -89,25 +92,10 @@ export const useUpdateDocument = () => {
   });
 };
 
-// Hook to analyze document with screenshots
+// Hook to analyze document with raw data
 export const useAnalyzeDocument = () => {
   return useMutation({
-    mutationFn: ({
-      screenshots,
-      userId,
-      options,
-    }: {
-      screenshots: {
-        textCanvas?: string;
-        drawingCanvas?: string;
-        combinedCanvas?: string;
-      };
-      userId?: string;
-      options?: {
-        analysisType?: string;
-        includeText?: boolean;
-        includeDrawing?: boolean;
-      };
-    }) => textApiService.analyzeDocument(screenshots, userId, options),
+    mutationFn: (request: AnalyzeDocumentRequest) =>
+      textApiService.analyzeDocumentWithRawData(request),
   });
 };

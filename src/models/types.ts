@@ -138,3 +138,35 @@ export interface PixiDrawingServiceConfig {
   antialias: boolean;
   resolution: number;
 }
+
+// Raw data analysis types
+export interface AnalyzeDocumentRequest {
+  textContent: TextContent;
+  drawingContent: any; // TLDraw snapshot
+  layoutInfo: {
+    containerDimensions: {
+      width: number;
+      height: number;
+    };
+    textDimensions: {
+      width: number;
+      height: number;
+    };
+    scrollPosition: {
+      x: number;
+      y: number;
+    };
+  };
+  userId?: string;
+  options?: {
+    analysisType?: string;
+    includeText?: boolean;
+    includeDrawing?: boolean;
+  };
+}
+
+export interface AnalyzeDocumentResponse {
+  analysisId: string;
+  result: unknown;
+  timestamp: string;
+}

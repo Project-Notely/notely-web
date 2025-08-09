@@ -1,4 +1,6 @@
 import type {
+  AnalyzeDocumentRequest,
+  AnalyzeDocumentResponse,
   LoadAnnotatedDocumentResponse,
   SaveAnnotatedDocumentRequest,
   SaveAnnotatedDocumentResponse,
@@ -292,7 +294,48 @@ export class TextApiService {
   }
 
   /**
-   * Analyze document with screenshot
+   * Analyze document with raw data instead of screenshots
+   */
+  public async analyzeDocumentWithRawData(
+    request: AnalyzeDocumentRequest
+  ): Promise<ApiResponse<AnalyzeDocumentResponse>> {
+    try {
+      console.log("🚀 Sending document raw data for analysis...", {
+        hasTextContent: !!request.textContent,
+        hasDrawingContent: !!request.drawingContent,
+        layoutInfo: request.layoutInfo,
+        userId: request.userId,
+        options: request.options,
+      });
+
+      const response = await axiosInstance.post(
+        "/documents/analyze-raw",
+        request
+      );
+
+      const apiResponse: ApiResponse<AnalyzeDocumentResponse> = {
+        success: true,
+        data: response.data,
+        message: "Document analysis started successfully",
+      };
+
+      console.log(
+        "✅ Document raw data analysis request sent:",
+        apiResponse.data
+      );
+      return apiResponse;
+    } catch (error: unknown) {
+      console.error("❌ Failed to analyze document with raw data:", error);
+      return {
+        success: false,
+        error: this.handleError(error),
+      };
+    }
+  }
+
+  /**
+   * @deprecated Use analyzeDocumentWithRawData instead
+   * Analyze document with screenshot (legacy method)
    */
   public async analyzeDocument(
     screenshots: {
@@ -308,18 +351,13 @@ export class TextApiService {
     }
   ): Promise<ApiResponse<{ analysisId: string; result?: any }>> {
     try {
-      console.log("🚀 Sending document for analysis...", {
+      console.log("🚀 Sending document for analysis (legacy)...", {
         hasTextCanvas: !!screenshots.textCanvas,
         hasDrawingCanvas: !!screenshots.drawingCanvas,
         hasCombinedCanvas: !!screenshots.combinedCanvas,
         userId,
         options,
       });
-
-      console.log("BLALBLABHLABHLABAL");
-      console.log(screenshots);
-      console.log(userId);
-      console.log(options);
 
       const response = await axiosInstance.post("/documents/analyze", {
         screenshots,

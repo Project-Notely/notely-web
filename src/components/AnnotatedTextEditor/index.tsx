@@ -12,18 +12,19 @@ import {
   Editor as TldrawEditor,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { FC } from "react";
 
 interface AnnotatedEditorProps {
   className?: string;
   initialMode?: EditorMode;
   userId?: string;
   initialDocument?: AnnotatedDocument;
-  onSave?: (success: boolean, documentId?: string) => void;
+  onSave: (success: boolean, documentId?: string) => void;
   onContentChange?: () => void;
 }
 
-const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
+const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
   className = "",
   initialMode = "text",
   userId,
@@ -40,6 +41,8 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDescription, setSaveDescription] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+
+  const tiptapEditorRef = useRef<TiptapEditor>(null);
 
   // Mode management
   const {
@@ -65,8 +68,6 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
     markAsChanged,
     getContentPreview,
     analyzeDocument,
-    downloadScreenshot,
-    clearDebugScreenshots,
   } = useAnnotatedEditor({ userId, containerRef });
 
   // Store TLDraw editor reference
@@ -91,10 +92,7 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
     onContentChange?.();
   }, [markAsChanged, onContentChange]);
 
-  // Scroll synchronization between text editor and TLDraw using camera
   useEffect(() => {
-    // CRITICAL FIX: Sync to the inner content wrapper where text actually scrolls
-    // Not the outer scroll container which was causing misalignment
     const innerScrollContainer = document.querySelector(
       ".annotated-editor .content-wrapper"
     ) as HTMLElement;
@@ -167,11 +165,9 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
     [saveDocument, onSave]
   );
 
-  // Handle quick save without dialog
-  const handleQuickSave = useCallback(async () => {
-    const success = await saveDocument();
-    onSave?.(success);
-  }, [saveDocument, onSave]);
+  const handleTest = useCallback(() => {
+    onSave(true);
+  }, [onSave]);
 
   // Handle analyze
   const handleAnalyze = useCallback(async () => {
@@ -184,7 +180,7 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
   }, [analyzeDocument]);
 
   // Load initial document
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialDocument) {
       loadDocument(initialDocument);
     }
@@ -192,8 +188,8 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
 
   return (
     <div className={`annotated-editor ${className}`}>
-      {/* Header with status and controls */}
-      <div className='mb-4 flex items-center justify-between'>
+      {/* header with status and controls */}
+      <div className='flex items-center justify-between'>
         <div className='flex items-center gap-4'>
           <EditorModeToggle
             mode={mode}
@@ -204,32 +200,17 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
             size='md'
             variant='buttons'
           />
-
-          {/* Status indicator */}
-          <div className='text-sm text-gray-600'>
-            {state.hasUnsavedChanges && !isSaving && !isAnalyzing && (
-              <span className='text-orange-600'>● Unsaved changes</span>
-            )}
-            {isSaving && <span className='text-blue-600'>● Saving...</span>}
-            {isAnalyzing && (
-              <span className='text-purple-600'>● Analyzing...</span>
-            )}
-            {!state.hasUnsavedChanges &&
-              !isSaving &&
-              !isAnalyzing &&
-              state.lastSaved && (
-                <span className='text-green-600'>
-                  ✓ Saved {state.lastSaved.toLocaleTimeString()}
-                </span>
-              )}
-            {state.analysisResult && !isAnalyzing && (
-              <span className='text-purple-600'>✓ Analysis complete</span>
-            )}
-          </div>
         </div>
 
         {/* Action buttons */}
         <div className='flex gap-2'>
+          <button
+            onClick={handleTest}
+            className='px-3 py-1 text-sm bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded transition-colors'
+            disabled={modeState.isTransitioning || isSaving || isAnalyzing}
+          >
+            ;LDSAKJFAS;LFJK
+          </button>
           <button
             onClick={clearContent}
             className='px-3 py-1 text-sm bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded transition-colors'
@@ -245,16 +226,6 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
           >
             {isAnalyzing ? "🔍 Analyzing..." : "🔍 Analyze"}
           </button>
-
-          {state.hasUnsavedChanges && (
-            <button
-              onClick={handleQuickSave}
-              className='px-3 py-1 text-sm bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white rounded transition-colors'
-              disabled={modeState.isTransitioning || isSaving || isAnalyzing}
-            >
-              💾 Quick Save
-            </button>
-          )}
 
           <button
             onClick={handleSaveClick}
@@ -298,159 +269,6 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
         </div>
       )}
 
-      {/* Debug Screenshots Display */}
-      {state.debugScreenshots && (
-        <div className='mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg'>
-          <div className='flex items-center justify-between mb-3'>
-            <h4 className='font-semibold text-gray-900'>
-              🔍 Debug Screenshots
-            </h4>
-            <button
-              onClick={clearDebugScreenshots}
-              className='text-sm px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded text-gray-700'
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className='text-xs text-gray-600 mb-3'>
-            Captured:{" "}
-            {new Date(state.debugScreenshots.timestamp).toLocaleString()}
-          </div>
-
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-            {/* Text Screenshot */}
-            {state.debugScreenshots.textCanvas && (
-              <div className='border border-gray-300 rounded-lg p-3 bg-white'>
-                <div className='flex items-center justify-between mb-2'>
-                  <h5 className='font-medium text-sm text-gray-700'>
-                    Text Canvas
-                  </h5>
-                  <button
-                    onClick={() => {
-                      if (state.debugScreenshots?.textCanvas) {
-                        const timestamp = new Date(
-                          state.debugScreenshots.timestamp
-                        )
-                          .toISOString()
-                          .replace(/[:.]/g, "-");
-                        downloadScreenshot(
-                          state.debugScreenshots.textCanvas,
-                          `text-screenshot-${timestamp}.png`
-                        );
-                      }
-                    }}
-                    className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
-                  >
-                    Download
-                  </button>
-                </div>
-                <img
-                  src={state.debugScreenshots.textCanvas}
-                  alt='Text Canvas Screenshot'
-                  className='w-full h-auto border border-gray-200 rounded'
-                  style={{ maxHeight: "200px", objectFit: "contain" }}
-                />
-              </div>
-            )}
-
-            {/* Drawing Screenshot */}
-            {state.debugScreenshots.drawingCanvas && (
-              <div className='border border-gray-300 rounded-lg p-3 bg-white'>
-                <div className='flex items-center justify-between mb-2'>
-                  <h5 className='font-medium text-sm text-gray-700'>
-                    Drawing Canvas
-                  </h5>
-                  <button
-                    onClick={() => {
-                      if (state.debugScreenshots?.drawingCanvas) {
-                        const timestamp = new Date(
-                          state.debugScreenshots.timestamp
-                        )
-                          .toISOString()
-                          .replace(/[:.]/g, "-");
-                        downloadScreenshot(
-                          state.debugScreenshots.drawingCanvas,
-                          `drawing-screenshot-${timestamp}.png`
-                        );
-                      }
-                    }}
-                    className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
-                  >
-                    Download
-                  </button>
-                </div>
-                <img
-                  src={state.debugScreenshots.drawingCanvas}
-                  alt='Drawing Canvas Screenshot'
-                  className='w-full h-auto border border-gray-200 rounded'
-                  style={{ maxHeight: "200px", objectFit: "contain" }}
-                />
-              </div>
-            )}
-
-            {/* Combined Screenshot */}
-            {state.debugScreenshots.combinedCanvas && (
-              <div className='border border-gray-300 rounded-lg p-3 bg-white'>
-                <div className='flex items-center justify-between mb-2'>
-                  <h5 className='font-medium text-sm text-gray-700'>
-                    Combined Canvas
-                  </h5>
-                  <button
-                    onClick={() => {
-                      if (state.debugScreenshots?.combinedCanvas) {
-                        const timestamp = new Date(
-                          state.debugScreenshots.timestamp
-                        )
-                          .toISOString()
-                          .replace(/[:.]/g, "-");
-                        downloadScreenshot(
-                          state.debugScreenshots.combinedCanvas,
-                          `combined-screenshot-${timestamp}.png`
-                        );
-                      }
-                    }}
-                    className='text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-700'
-                  >
-                    Download
-                  </button>
-                </div>
-                <img
-                  src={state.debugScreenshots.combinedCanvas}
-                  alt='Combined Canvas Screenshot'
-                  className='w-full h-auto border border-gray-200 rounded'
-                  style={{ maxHeight: "200px", objectFit: "contain" }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Status indicators */}
-          <div className='mt-3 flex gap-4 text-xs'>
-            <span
-              className={`px-2 py-1 rounded ${state.debugScreenshots.textCanvas ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              Text:{" "}
-              {state.debugScreenshots.textCanvas ? "✓ Captured" : "✗ Failed"}
-            </span>
-            <span
-              className={`px-2 py-1 rounded ${state.debugScreenshots.drawingCanvas ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              Drawing:{" "}
-              {state.debugScreenshots.drawingCanvas ? "✓ Captured" : "✗ Failed"}
-            </span>
-            <span
-              className={`px-2 py-1 rounded ${state.debugScreenshots.combinedCanvas ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
-            >
-              Combined:{" "}
-              {state.debugScreenshots.combinedCanvas
-                ? "✓ Captured"
-                : "✗ Failed"}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Editor Container */}
       <div
         ref={containerRef}
@@ -477,6 +295,7 @@ const AnnotatedTextEditor: React.FC<AnnotatedEditorProps> = ({
               `}
             >
               <SimpleEditor
+                ref={tiptapEditorRef}
                 onEditorReady={handleTiptapEditorReady}
                 onChange={handleContentChange}
               />
