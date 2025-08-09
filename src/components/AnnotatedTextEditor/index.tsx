@@ -8,12 +8,15 @@ import { Editor as TiptapEditor } from "@tiptap/react";
 import {
   createTLStore,
   defaultShapeUtils,
-  Tldraw,
   Editor as TldrawEditor,
 } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { FC } from "react";
+import * as React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+const Tldraw = React.lazy(() =>
+  import("@tldraw/tldraw").then(m => ({ default: m.Tldraw }))
+);
 
 interface AnnotatedEditorProps {
   className?: string;
@@ -42,7 +45,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
   const [saveDescription, setSaveDescription] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
-  const tiptapEditorRef = useRef<TiptapEditor>(null);
+  // Tiptap editor instance is provided via onEditorReady callback
 
   // Mode management
   const {
@@ -60,6 +63,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     state,
     isSaving,
     isAnalyzing,
+    tldrawEditorRef,
     setTiptapEditor,
     setTldrawEditor,
     saveDocument,
@@ -104,33 +108,16 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
       return;
     }
 
-    console.log(
-      "🔄 [DEBUG] Syncing TLDraw camera to inner content wrapper scroll"
-    );
-
     const handleScroll = () => {
       const scrollTop = innerScrollContainer.scrollTop;
       const scrollLeft = innerScrollContainer.scrollLeft;
 
-      console.log("📍 [DEBUG] Inner scroll changed:", {
-        scrollTop,
-        scrollLeft,
-      });
-
-      // Get the current TLDraw editor instance
-      const tldrawEditor = setTldrawEditor as unknown as {
-        current: TldrawEditor | null;
-      };
-
-      if (tldrawEditor.current) {
+      // Use the TLDraw editor ref instead of misusing setter
+      if (tldrawEditorRef?.current) {
         // Update TLDraw camera to follow the inner scroll (where text actually moves)
-        const currentCamera = tldrawEditor.current.getCamera();
-        tldrawEditor.current.setCamera({
+        const currentCamera = tldrawEditorRef.current.getCamera();
+        tldrawEditorRef.current.setCamera({
           ...currentCamera,
-          x: -scrollLeft,
-          y: -scrollTop,
-        });
-        console.log("📷 [DEBUG] TLDraw camera updated:", {
           x: -scrollLeft,
           y: -scrollTop,
         });
@@ -142,7 +129,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     return () => {
       innerScrollContainer.removeEventListener("scroll", handleScroll);
     };
-  }, [setTldrawEditor]);
+  }, [tldrawEditorRef]);
 
   // Handle save with dialog
   const handleSaveClick = useCallback(() => {
@@ -165,9 +152,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     [saveDocument, onSave]
   );
 
-  const handleTest = useCallback(() => {
-    onSave(true);
-  }, [onSave]);
+  // Removed stray test handler and button for cleanliness
 
   // Handle analyze
   const handleAnalyze = useCallback(async () => {
@@ -204,13 +189,6 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
 
         {/* Action buttons */}
         <div className='flex gap-2'>
-          <button
-            onClick={handleTest}
-            className='px-3 py-1 text-sm bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded transition-colors'
-            disabled={modeState.isTransitioning || isSaving || isAnalyzing}
-          >
-            ;LDSAKJFAS;LFJK
-          </button>
           <button
             onClick={clearContent}
             className='px-3 py-1 text-sm bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded transition-colors'
@@ -295,7 +273,6 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
               `}
             >
               <SimpleEditor
-                ref={tiptapEditorRef}
                 onEditorReady={handleTiptapEditorReady}
                 onChange={handleContentChange}
               />
@@ -317,21 +294,23 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
                 `}
                 style={{ minHeight: "600px" }} // Ensure minimum height for drawing
               >
-                <Tldraw
-                  store={tldrawStore}
-                  onMount={handleTldrawMount}
-                  autoFocus={false}
-                  components={{
-                    MainMenu: null,
-                    QuickActions: null,
-                    HelpMenu: null,
-                    DebugMenu: null,
-                    SharePanel: null,
-                    MenuPanel: null,
-                    TopPanel: null,
-                    NavigationPanel: null,
-                  }}
-                />
+                <React.Suspense fallback={<div className='w-full h-full' />}>
+                  <Tldraw
+                    store={tldrawStore}
+                    onMount={handleTldrawMount}
+                    autoFocus={false}
+                    components={{
+                      MainMenu: null,
+                      QuickActions: null,
+                      HelpMenu: null,
+                      DebugMenu: null,
+                      SharePanel: null,
+                      MenuPanel: null,
+                      TopPanel: null,
+                      NavigationPanel: null,
+                    }}
+                  />
+                </React.Suspense>
               </div>
             </div>
           </div>

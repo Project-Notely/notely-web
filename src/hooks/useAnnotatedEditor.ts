@@ -383,6 +383,7 @@ export const useAnnotatedEditor = ({
     isSaving: state.isSaving,
     isAnalyzing: state.isAnalyzing,
     tiptapEditorRef, // Expose the editor ref
+    tldrawEditorRef, // Expose the TLDraw editor ref
     setTiptapEditor,
     setTldrawEditor,
     saveDocument,

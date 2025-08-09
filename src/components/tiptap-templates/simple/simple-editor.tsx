@@ -1,3 +1,4 @@
+import type { Editor } from "@tiptap/react";
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react";
 import * as React from "react";
 
@@ -256,8 +257,10 @@ export function SimpleEditor({
     }
   }, [isMobile, mobileView]);
 
+  const providerValue = React.useMemo(() => ({ editor }), [editor]);
+
   return (
-    <EditorContext.Provider value={{ editor }}>
+    <EditorContext.Provider value={providerValue}>
       <Toolbar
         ref={toolbarRef}
         style={
@@ -283,11 +286,13 @@ export function SimpleEditor({
       </Toolbar>
 
       <div className='content-wrapper'>
-        <EditorContent
-          editor={editor}
-          role='presentation'
-          className='simple-editor-content'
-        />
+        {editor && (
+          <EditorContent
+            editor={editor}
+            role='presentation'
+            className='simple-editor-content'
+          />
+        )}
       </div>
     </EditorContext.Provider>
   );
