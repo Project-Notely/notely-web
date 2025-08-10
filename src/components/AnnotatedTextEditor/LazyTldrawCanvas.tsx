@@ -1,5 +1,6 @@
 import type { Editor as TldrawEditor } from "@tldraw/tldraw";
-import * as React from "react";
+import { useEffect, useState } from "react";
+import type { ComponentType } from "react";
 
 type LazyTldrawCanvasProps = {
   onMount: (editor: TldrawEditor) => void;
@@ -13,11 +14,11 @@ export const LazyTldrawCanvas: React.FC<LazyTldrawCanvasProps> = ({
   isTextMode,
 }) => {
   type TLDrawModule = typeof import("@tldraw/tldraw");
-  const [mod, setMod] = React.useState<null | TLDrawModule>(null);
+  const [mod, setMod] = useState<null | TLDrawModule>(null);
   type TLStore = ReturnType<NonNullable<TLDrawModule>["createTLStore"]>;
-  const [store, setStore] = React.useState<null | TLStore>(null);
+  const [store, setStore] = useState<null | TLStore>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let isActive = true;
     (async () => {
       const m = await import("@tldraw/tldraw");
@@ -42,7 +43,7 @@ export const LazyTldrawCanvas: React.FC<LazyTldrawCanvasProps> = ({
     components?: Record<string, unknown>;
     className?: string;
   };
-  const Tldraw = mod.Tldraw as React.ComponentType<TldrawProps>;
+  const Tldraw = mod.Tldraw as ComponentType<TldrawProps>;
 
   return (
     <Tldraw

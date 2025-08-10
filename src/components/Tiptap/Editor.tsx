@@ -49,6 +49,9 @@ export function TiptapEditor({
     },
     extensions: [
       StarterKit.configure({
+        heading: false,
+        blockquote: false,
+        codeBlock: false,
         horizontalRule: false,
         link: {
           openOnClick: false,
@@ -57,12 +60,12 @@ export function TiptapEditor({
       }),
       HorizontalRule,
       TailwindHeading,
+      TailwindBlockquote,
+      TailwindCodeBlock,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
       TaskItem.configure({ nested: true }),
       Highlight.configure({ multicolor: true }),
-      TailwindBlockquote,
-      TailwindCodeBlock,
       Image,
       Typography,
       Superscript,

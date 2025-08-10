@@ -24,7 +24,6 @@ const AnnotatedEditorPage = () => {
         windowHeight: editorRef.current.scrollHeight,
       });
 
-      // Create download link
       const link = document.createElement("a");
       link.download = `document-${new Date().toISOString().split("T")[0]}.png`;
       link.href = canvas.toDataURL("image/png");
@@ -34,18 +33,12 @@ const AnnotatedEditorPage = () => {
     }
   };
 
-  const handleContentChange = () => {
-    console.log("Content changed in editor");
-  };
-
   return (
     <div className='' ref={editorRef}>
       <div className='bg-white rounded-lg shadow-lg p-6'>
         <AnnotatedTextEditor
-          userId='demo-user-123' // Replace with actual user ID from auth
           initialMode='text'
           onSave={handleSave}
-          onContentChange={handleContentChange}
           className='min-h-screen'
         />
       </div>

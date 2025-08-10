@@ -1,14 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Tiptap Editor Styles */
-@import "./_variables.scss";
-@import "./_keyframe-animations.scss";
-
-/* TLDraw Styles */
 @import "@tldraw/tldraw/tldraw.css";
 
-/* TLDraw Overlay Fixes */
 .annotated-editor .tldraw__canvas {
   background: transparent;
   background-color: rgba(0, 0, 0, 0);
