@@ -22,7 +22,7 @@ import { HorizontalRule } from "@/components/Tiptap/extensions/HorizontalRule";
 import { ImageUploadNode } from "@/components/Tiptap/nodes/ImageUpload/extension";
 
 // --- Lib ---
-import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
+import { handleImageUpload, MAX_FILE_SIZE } from "@/utils/tiptap-utils";
 
 // --- Content ---
 import content from "@/components/Tiptap/content.json";
