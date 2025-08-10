@@ -90,13 +90,13 @@ export function TiptapEditor({
 
   return (
     <EditorContext.Provider value={providerValue}>
-      <div className='content-wrapper h-full overflow-auto'>
+      <div className='content-wrapper h-full overflow-auto border border-red-500'>
         {editor && (
           <>
             <EditorContent
               editor={editor}
               role='presentation'
-              className='simple-editor-content max-w-[640px] w-full mx-auto px-12 py-12 md:px-6 md:py-6'
+              className='simple-editor-content w-full mx-auto px-12 py-12 md:px-6 md:py-6'
             />
             <BubbleMenu editor={editor}>
               <div className='flex items-center gap-1 rounded-md bg-black/80 p-1 text-white shadow-md'>
