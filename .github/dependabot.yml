@@ -1,7 +1,7 @@
 version: 2
 
 updates:
-  - package-ecosystem: "bun"
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -49,6 +49,17 @@ updates:
           - "@vitejs/*"
           - "rollup*"
           - "esbuild*"
+      tiptap:
+        patterns:
+          - "@tiptap/*"
+      tldraw:
+        patterns:
+          - "@tldraw/*"
+      ui-components:
+        patterns:
+          - "@radix-ui/*"
+          - "@floating-ui/*"
+          - "lucide-react"
 
   - package-ecosystem: "github-actions"
     directory: "/"

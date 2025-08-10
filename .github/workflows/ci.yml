@@ -20,7 +20,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.18"
+          bun-version: "latest"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -28,12 +28,12 @@ jobs:
           path: |
             ~/.bun/install/cache
             node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --no-save
 
       - name: Check code formatting
         run: bun run format:check
@@ -43,6 +43,10 @@ jobs:
 
       - name: Run TypeScript type checking
         run: bun run type-check
+
+      - name: Run tests
+        run: bun test
+        continue-on-error: true
 
       - name: Build project
         run: bun run build
@@ -66,13 +70,13 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.18"
+          bun-version: "latest"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --no-save
 
       - name: Run security audit
-        run: bun audit
+        run: bunx audit-ci --moderate
         continue-on-error: true
 
       - name: Check for known vulnerabilities
@@ -97,10 +101,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.18"
+          bun-version: "latest"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --no-save
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
@@ -123,10 +127,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.18"
+          bun-version: "latest"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --no-save
 
       - name: Build for preview
         run: bun run build
@@ -168,10 +172,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.18"
+          bun-version: "latest"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --no-save
 
       - name: Build for production
         run: bun run build
