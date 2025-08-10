@@ -5,7 +5,7 @@ import type {
   TextContent,
 } from "@/models/types";
 import { Editor as TiptapEditor } from "@tiptap/react";
-import { Editor as TldrawEditor } from "@tldraw/tldraw";
+import type { Editor as TldrawEditor } from "@tldraw/tldraw";
 import { useCallback, useRef, useState } from "react";
 
 // Configuration interface for the hook

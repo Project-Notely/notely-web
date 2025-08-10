@@ -1,22 +1,14 @@
 import EditorModeToggle from "@/components/AnnotatedTextEditor/EditorModeToggle";
-import { SimpleEditor } from "@/components/tiptap-templates/simple/simple-editor";
-import "@/components/tiptap-templates/simple/simple-editor.scss";
+import { LazyTldrawCanvas } from "@/components/AnnotatedTextEditor/LazyTldrawCanvas";
+import { TiptapEditor } from "@/components/Tiptap/Editor";
 import { useAnnotatedEditor } from "@/hooks/useAnnotatedEditor";
 import { useEditorMode, type EditorMode } from "@/hooks/useEditorMode";
 import type { AnnotatedDocument } from "@/models/types";
-import { Editor as TiptapEditor } from "@tiptap/react";
-import {
-  createTLStore,
-  defaultShapeUtils,
-  Editor as TldrawEditor,
-} from "@tldraw/tldraw";
+import { Editor as TiptapEditorType } from "@tiptap/react";
+import type { Editor as TldrawEditor } from "@tldraw/tldraw";
 import "@tldraw/tldraw/tldraw.css";
 import type { FC } from "react";
-import * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-const Tldraw = React.lazy(() =>
-  import("@tldraw/tldraw").then(m => ({ default: m.Tldraw }))
-);
 
 interface AnnotatedEditorProps {
   className?: string;
@@ -38,9 +30,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tldrawContainerRef = useRef<HTMLDivElement>(null);
-  const [tldrawStore] = useState(() =>
-    createTLStore({ shapeUtils: defaultShapeUtils })
-  );
+  // Store is created lazily inside LazyTldrawCanvas
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDescription, setSaveDescription] = useState("");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -84,7 +74,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
 
   // Handle Tiptap editor ready
   const handleTiptapEditorReady = useCallback(
-    (editor: TiptapEditor | null) => {
+    (editor: TiptapEditorType | null) => {
       setTiptapEditor(editor);
     },
     [setTiptapEditor]
@@ -164,6 +154,169 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     }
   }, [analyzeDocument]);
 
+  const handleExportPng = useCallback(async () => {
+    const editorEl = document.querySelector(
+      ".simple-editor-content"
+    ) as HTMLElement | null;
+    const pmEl = editorEl?.querySelector(
+      ".tiptap.ProseMirror"
+    ) as HTMLElement | null;
+
+    if (!editorEl) {
+      console.warn("Editor content not found for export");
+      return;
+    }
+
+    // Ensure fonts are ready to avoid metric/multiline differences
+    try {
+      // Not all browsers implement document.fonts
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const fontsApi = (document as any).fonts as
+        | { ready: Promise<void> }
+        | undefined;
+      await fontsApi?.ready;
+    } catch {
+      console.warn("Fonts not ready, using fallback");
+    }
+
+    const wrapperRect = editorEl.getBoundingClientRect();
+    const width = Math.ceil(wrapperRect.width);
+    const height = Math.ceil((pmEl ?? editorEl).scrollHeight);
+    const pixelRatio = Math.min(window.devicePixelRatio || 2, 3);
+
+    const collectCSS = (): string => {
+      let cssText = "";
+      for (const styleSheet of Array.from(document.styleSheets)) {
+        try {
+          const rules = styleSheet.cssRules;
+          if (!rules) continue;
+          for (const rule of Array.from(rules)) {
+            cssText += rule.cssText + "\n";
+          }
+        } catch (_e) {
+          // Ignore cross-origin stylesheets
+        }
+      }
+      return cssText;
+    };
+
+    try {
+      // Primary: html-to-image (better style inlining)
+      const htmlToImage = await import("html-to-image");
+      const target = editorEl as HTMLElement;
+      const dataUrl = await htmlToImage.toPng(target, {
+        cacheBust: true,
+        pixelRatio,
+        width,
+        height,
+        canvasWidth: width * pixelRatio,
+        canvasHeight: height * pixelRatio,
+        skipFonts: true,
+        style: {
+          width: `${width}px`,
+          height: `${height}px`,
+          minWidth: `${width}px`,
+          // keep max-width from computed styles to preserve wrapping
+          overflow: "visible",
+        },
+      });
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `tiptap-editor-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      try {
+        const { default: html2canvas } = await import("html2canvas-pro");
+        const target = editorEl as HTMLElement;
+        const canvas = await html2canvas(target, {
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: null,
+          foreignObjectRendering: true,
+          scale: pixelRatio,
+          width,
+          height,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: width,
+          windowHeight: height,
+          onclone: doc => {
+            const styleTag = doc.createElement("style");
+            styleTag.setAttribute("type", "text/css");
+            styleTag.appendChild(doc.createTextNode(collectCSS()));
+            doc.head.appendChild(styleTag);
+            const clonedWrapper = doc.querySelector(
+              ".simple-editor-content"
+            ) as HTMLElement | null;
+            if (clonedWrapper) {
+              clonedWrapper.style.width = `${width}px`;
+              clonedWrapper.style.height = `${height}px`;
+              clonedWrapper.style.minWidth = `${width}px`;
+              clonedWrapper.style.overflow = "visible";
+              clonedWrapper.style.transform = "none";
+            }
+          },
+        });
+
+        // If html2canvas produced a blank canvas, fallback to html-to-image with off-DOM clone
+        const ctx = canvas.getContext("2d");
+        const sample = ctx?.getImageData(
+          0,
+          0,
+          Math.min(10, canvas.width),
+          Math.min(10, canvas.height)
+        );
+        const isBlank = sample ? !sample.data.some(v => v !== 0) : false;
+
+        if (isBlank) {
+          const htmlToImage = await import("html-to-image");
+          const dataUrl = await htmlToImage.toPng(editorEl, {
+            cacheBust: true,
+            pixelRatio,
+            width,
+            height,
+            canvasWidth: width * pixelRatio,
+            canvasHeight: height * pixelRatio,
+            skipFonts: true,
+            style: {
+              width: `${width}px`,
+              minWidth: `${width}px`,
+              maxWidth: "none",
+              overflow: "visible",
+            },
+          });
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = `tiptap-editor-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return;
+        }
+
+        const blob: Blob | null = await new Promise(resolve =>
+          canvas.toBlob(b => resolve(b), "image/png")
+        );
+        if (!blob) {
+          console.error("Failed to create PNG blob from canvas");
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `tiptap-editor-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (fallbackError) {
+        console.error("Export PNG failed (both methods):", fallbackError);
+      }
+    }
+  }, []);
+
   // Load initial document
   useEffect(() => {
     if (initialDocument) {
@@ -189,6 +342,15 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
 
         {/* Action buttons */}
         <div className='flex gap-2'>
+          <button
+            onClick={handleExportPng}
+            className='px-3 py-1 text-sm bg-gray-700 hover:bg-gray-800 disabled:bg-gray-400 text-white rounded transition-colors'
+            aria-label='Export editor as PNG'
+            title='Export editor as PNG'
+            disabled={modeState.isTransitioning || isSaving || isAnalyzing}
+          >
+            📷 Export PNG
+          </button>
           <button
             onClick={clearContent}
             className='px-3 py-1 text-sm bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded transition-colors'
@@ -272,7 +434,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
                 ${isTextMode ? "pointer-events-auto" : "pointer-events-none"}
               `}
             >
-              <SimpleEditor
+              <TiptapEditor
                 onEditorReady={handleTiptapEditorReady}
                 onChange={handleContentChange}
               />
@@ -294,23 +456,11 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
                 `}
                 style={{ minHeight: "600px" }} // Ensure minimum height for drawing
               >
-                <React.Suspense fallback={<div className='w-full h-full' />}>
-                  <Tldraw
-                    store={tldrawStore}
-                    onMount={handleTldrawMount}
-                    autoFocus={false}
-                    components={{
-                      MainMenu: null,
-                      QuickActions: null,
-                      HelpMenu: null,
-                      DebugMenu: null,
-                      SharePanel: null,
-                      MenuPanel: null,
-                      TopPanel: null,
-                      NavigationPanel: null,
-                    }}
-                  />
-                </React.Suspense>
+                <LazyTldrawCanvas
+                  onMount={handleTldrawMount}
+                  isDrawingMode={isDrawingMode}
+                  isTextMode={isTextMode}
+                />
               </div>
             </div>
           </div>
