@@ -1,0 +1,17 @@
+---
+globs: src/components/**
+---
+
+# Component Organization
+
+## File Structure
+
+- Group related components in folders: `ComponentName/index.tsx`
+- Place custom extensions in dedicated folders: `Tiptap/extensions/`
+- Use barrel exports: `export { default } from './ComponentName'`
+
+## Tailwind Usage
+
+- Use Tailwind classes exclusively for styling
+- Avoid inline CSS or styled-components
+- Use conditional classes: `className={isActive ? 'bg-blue-500' : 'bg-gray-500'}`

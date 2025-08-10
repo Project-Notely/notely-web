@@ -1,0 +1,24 @@
+---
+globs: src/components/Tiptap/**,src/components/AnnotatedTextEditor/**,src/hooks/useAnnotatedEditor.ts
+---
+
+# Tiptap & TLDraw Integration Guidelines
+
+## Tiptap Configuration
+
+- Always disable conflicting StarterKit extensions when using custom replacements
+- Use Tailwind-styled custom extensions: `TailwindHeading`, `TailwindBlockquote`, `TailwindCodeBlock`
+- Configure StarterKit with: `{ heading: false, blockquote: false, codeBlock: false }`
+
+## TLDraw Export Handling
+
+- `getSvgElement()` returns object format: `{ svg: SVGElement, width: number, height: number }`
+- Extract SVG from result object: `result.svg`
+- Use TLDraw dimensions for canvas sizing: `canvas.width = exportWidth || img.width || 800`
+- Handle multiple parameter combinations for version compatibility
+
+## Error Prevention
+
+- Always validate TLDraw export results before using
+- Parse SVG strings with DOMParser when needed
+- Use try-catch blocks for multiple TLDraw API parameter combinations

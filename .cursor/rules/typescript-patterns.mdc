@@ -1,0 +1,25 @@
+---
+globs: *.ts,*.tsx
+---
+
+# TypeScript Patterns
+
+## React Component Structure
+
+- Use `FC<Props>` type for functional components
+- Define props interfaces above component definitions
+- Use `useCallback` for event handlers and complex functions
+- Prefer `const` over `let` when variables aren't reassigned
+
+## Type Safety
+
+- Cast unknown types carefully: `as unknown as SpecificType`
+- Use type guards for runtime validation
+- Define proper interfaces for complex objects
+- Avoid `any` types - use `unknown` instead
+
+## Error Handling
+
+- Use try-catch for async operations and API calls
+- Provide descriptive error messages with context
+- Log unexpected results for debugging: `console.error("Unexpected result:", result)`
