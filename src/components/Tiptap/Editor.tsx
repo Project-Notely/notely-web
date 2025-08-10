@@ -90,7 +90,7 @@ export function TiptapEditor({
 
   return (
     <EditorContext.Provider value={providerValue}>
-      <div className='content-wrapper h-full overflow-auto border border-red-500'>
+      <div className='content-wrapper h-full overflow-auto'>
         {editor && (
           <>
             <EditorContent

@@ -317,6 +317,98 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     }
   }, []);
 
+  const handleExportSvg = useCallback(async () => {
+    const editor = tldrawEditorRef?.current;
+    if (!editor) {
+      console.warn("TLDraw editor not found for export");
+      return;
+    }
+
+    try {
+      // Prefer official helper in latest TLDraw
+      const { exportToSvg } = await import("@tldraw/tldraw");
+      if (typeof exportToSvg === "function") {
+        const el = await exportToSvg({
+          editor,
+          padding: 16,
+          background: false,
+        });
+        const svgString = new XMLSerializer().serializeToString(el);
+        const blob = new Blob([svgString], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `tldraw-canvas-${Date.now()}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Fallback to editor methods if helper not present for some reason
+      const elFallback = await (async () => {
+        const maybeGetSvgElement = (
+          editor as unknown as {
+            getSvgElement?: (
+              ids?: unknown[],
+              opts?: { padding?: number; background?: boolean }
+            ) => Promise<SVGElement> | SVGElement;
+          }
+        ).getSvgElement;
+        if (typeof maybeGetSvgElement === "function") {
+          return await maybeGetSvgElement(undefined, {
+            padding: 16,
+            background: false,
+          });
+        }
+        const maybeGetSvg = (
+          editor as unknown as {
+            getSvg?: (
+              ids?: unknown[],
+              opts?: { padding?: number; background?: boolean }
+            ) => Promise<string | SVGElement> | string | SVGElement;
+          }
+        ).getSvg;
+        if (typeof maybeGetSvg === "function") {
+          const res = await maybeGetSvg(undefined, {
+            padding: 16,
+            background: false,
+          });
+          if (typeof res === "string") {
+            const blob = new Blob([res], { type: "image/svg+xml" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `tldraw-canvas-${Date.now()}.svg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            return null;
+          }
+          return res as SVGElement;
+        }
+        throw new Error("No compatible TLDraw SVG export method available");
+      })();
+
+      if (elFallback) {
+        const svgString = new XMLSerializer().serializeToString(elFallback);
+        const blob = new Blob([svgString], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `tldraw-canvas-${Date.now()}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Export SVG failed:", error);
+    }
+  }, [tldrawEditorRef]);
+
   // Load initial document
   useEffect(() => {
     if (initialDocument) {
@@ -350,6 +442,15 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
             disabled={modeState.isTransitioning || isSaving || isAnalyzing}
           >
             📷 Export PNG
+          </button>
+          <button
+            onClick={handleExportSvg}
+            className='px-3 py-1 text-sm bg-gray-700 hover:bg-gray-800 disabled:bg-gray-400 text-white rounded transition-colors'
+            aria-label='Export drawing as SVG'
+            title='Export drawing as SVG'
+            disabled={modeState.isTransitioning || isSaving || isAnalyzing}
+          >
+            🖼️ Export SVG
           </button>
           <button
             onClick={clearContent}
