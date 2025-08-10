@@ -317,7 +317,7 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     }
   }, []);
 
-  const handleExportSvg = useCallback(async () => {
+  const handleExportDrawingPng = useCallback(async () => {
     const editor = tldrawEditorRef?.current;
     if (!editor) {
       console.warn("TLDraw editor not found for export");
@@ -325,87 +325,285 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
     }
 
     try {
-      // Prefer official helper in latest TLDraw
-      const { exportToSvg } = await import("@tldraw/tldraw");
-      if (typeof exportToSvg === "function") {
-        const el = await exportToSvg({
-          editor,
-          padding: 16,
-          background: false,
+      // Cast editor to access TLDraw methods with proper parameters
+      const editorInstance = editor as unknown as {
+        getCurrentPageShapeIds?: () => string[];
+        getCurrentPageShapes?: () => unknown[];
+        getSvgString?: (
+          shapes?: unknown[],
+          opts?: { padding?: number; background?: boolean }
+        ) => string;
+        getSvgElement?: (
+          shapes?: unknown[],
+          opts?: { padding?: number; background?: boolean }
+        ) => SVGElement | Promise<SVGElement>;
+        exportAs?: (format: string, opts?: unknown) => Promise<Blob>;
+        getShapePageBounds?: (
+          shape: unknown
+        ) => { x: number; y: number; w: number; h: number } | undefined;
+      };
+
+      // Get current page shapes for export (use actual shape objects, not just IDs)
+      const shapes = editorInstance.getCurrentPageShapes?.() || [];
+      const opts = { padding: 16, background: true };
+
+      // Try getSvgElement first to convert to PNG
+      if (typeof editorInstance.getSvgElement === "function") {
+        let svgElement: SVGElement;
+        let exportWidth: number | undefined;
+        let exportHeight: number | undefined;
+
+        // Try different parameter combinations for different TLDraw versions
+        let rawResult: unknown;
+        try {
+          // Try without any parameters (exports entire page)
+          rawResult = await editorInstance.getSvgElement();
+        } catch {
+          try {
+            // Try with just options
+            rawResult = await editorInstance.getSvgElement(undefined, opts);
+          } catch {
+            try {
+              // Try with shapes array
+              rawResult = await editorInstance.getSvgElement(shapes, opts);
+            } catch {
+              throw new Error(
+                "All getSvgElement parameter combinations failed"
+              );
+            }
+          }
+        }
+
+        // Validate that we got a proper SVGElement or string
+        if (!rawResult) {
+          throw new Error("getSvgElement returned null/undefined");
+        }
+
+        // Handle different return types from getSvgElement
+        if (typeof rawResult === "string") {
+          // Parse the SVG string to create an actual SVGElement
+          const parser = new DOMParser();
+          const svgDoc = parser.parseFromString(rawResult, "image/svg+xml");
+          const parsedSvg = svgDoc.querySelector("svg");
+          if (!parsedSvg) {
+            throw new Error("Failed to parse SVG string from getSvgElement");
+          }
+          svgElement = parsedSvg;
+        } else if (
+          rawResult instanceof Element &&
+          (rawResult as Element).tagName.toLowerCase() === "svg"
+        ) {
+          svgElement = rawResult as SVGElement;
+        } else if (
+          typeof rawResult === "object" &&
+          rawResult !== null &&
+          "svg" in rawResult
+        ) {
+          // Handle TLDraw's object format: { svg: SVGElement, width: number, height: number }
+          const result = rawResult as {
+            svg: SVGElement;
+            width: number;
+            height: number;
+          };
+          if (
+            result.svg instanceof Element &&
+            result.svg.tagName.toLowerCase() === "svg"
+          ) {
+            svgElement = result.svg;
+            exportWidth = result.width;
+            exportHeight = result.height;
+            console.log(
+              `📐 TLDraw export dimensions: ${result.width} x ${result.height}`
+            );
+          } else {
+            throw new Error(
+              "Object returned by getSvgElement does not contain valid SVG"
+            );
+          }
+        } else {
+          console.error("Unexpected getSvgElement result:", rawResult);
+          throw new Error(
+            `getSvgElement returned unexpected type: ${typeof rawResult} (constructor: ${rawResult.constructor?.name})`
+          );
+        }
+
+        // Convert SVG to PNG using canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+
+        return new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Set canvas size to match TLDraw dimensions or fallback to image/default size
+            canvas.width = exportWidth || img.width || 800;
+            canvas.height = exportHeight || img.height || 600;
+
+            // Fill with white background
+            if (ctx) {
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              // Draw the SVG image
+              ctx.drawImage(img, 0, 0);
+            }
+
+            // Convert to PNG and download
+            canvas.toBlob(
+              blob => {
+                if (blob) {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `tldraw-drawing-${Date.now()}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  console.log("✅ Drawing PNG exported successfully");
+                  resolve();
+                } else {
+                  reject(new Error("Failed to create blob from canvas"));
+                }
+              },
+              "image/png",
+              0.95
+            );
+          };
+
+          img.onerror = () => reject(new Error("Failed to load SVG"));
+
+          // Convert SVG element to data URL
+          const svgString = new XMLSerializer().serializeToString(
+            svgElement as SVGElement
+          );
+          const svgBlob = new Blob([svgString], { type: "image/svg+xml" });
+          const svgUrl = URL.createObjectURL(svgBlob);
+          img.src = svgUrl;
         });
-        const svgString = new XMLSerializer().serializeToString(el);
-        const blob = new Blob([svgString], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `tldraw-canvas-${Date.now()}.svg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+      }
+
+      // Try getSvgString as fallback
+      if (typeof editorInstance.getSvgString === "function") {
+        // Try different parameter combinations for different TLDraw versions
+        let rawStringResult: unknown;
+        try {
+          // Try without any parameters (exports entire page)
+          rawStringResult = editorInstance.getSvgString();
+        } catch {
+          try {
+            // Try with just options
+            rawStringResult = editorInstance.getSvgString(undefined, opts);
+          } catch {
+            try {
+              // Try with shapes array
+              rawStringResult = editorInstance.getSvgString(shapes, opts);
+            } catch {
+              throw new Error("All getSvgString parameter combinations failed");
+            }
+          }
+        }
+
+        // Validate that we got a proper string
+        if (!rawStringResult || typeof rawStringResult !== "string") {
+          console.error("Unexpected getSvgString result:", rawStringResult);
+          throw new Error(
+            `getSvgString returned unexpected type: ${typeof rawStringResult}`
+          );
+        }
+
+        const svgString = rawStringResult;
+
+        // Convert SVG string to PNG using canvas
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+
+        return new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Set canvas size to match image
+            canvas.width = img.width || 800;
+            canvas.height = img.height || 600;
+
+            // Fill with white background
+            if (ctx) {
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              // Draw the SVG image
+              ctx.drawImage(img, 0, 0);
+            }
+
+            // Convert to PNG and download
+            canvas.toBlob(
+              blob => {
+                if (blob) {
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = `tldraw-drawing-${Date.now()}.png`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  console.log("✅ Drawing PNG exported successfully");
+                  resolve();
+                } else {
+                  reject(new Error("Failed to create blob from canvas"));
+                }
+              },
+              "image/png",
+              0.95
+            );
+          };
+
+          img.onerror = () => reject(new Error("Failed to load SVG"));
+
+          // Convert SVG string to data URL
+          const svgBlob = new Blob([svgString], { type: "image/svg+xml" });
+          const svgUrl = URL.createObjectURL(svgBlob);
+          img.src = svgUrl;
+        });
+      }
+
+      // Fallback: Use html2canvas to capture the TLDraw canvas element
+      const { default: html2canvas } = await import("html2canvas-pro");
+      const tldrawContainer = document.querySelector(
+        ".tl-container"
+      ) as HTMLElement;
+
+      if (tldrawContainer) {
+        const canvas = await html2canvas(tldrawContainer, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        });
+
+        canvas.toBlob(
+          blob => {
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `tldraw-drawing-${Date.now()}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+              console.log(
+                "✅ Drawing PNG exported successfully via html2canvas"
+              );
+            }
+          },
+          "image/png",
+          0.95
+        );
         return;
       }
 
-      // Fallback to editor methods if helper not present for some reason
-      const elFallback = await (async () => {
-        const maybeGetSvgElement = (
-          editor as unknown as {
-            getSvgElement?: (
-              ids?: unknown[],
-              opts?: { padding?: number; background?: boolean }
-            ) => Promise<SVGElement> | SVGElement;
-          }
-        ).getSvgElement;
-        if (typeof maybeGetSvgElement === "function") {
-          return await maybeGetSvgElement(undefined, {
-            padding: 16,
-            background: false,
-          });
-        }
-        const maybeGetSvg = (
-          editor as unknown as {
-            getSvg?: (
-              ids?: unknown[],
-              opts?: { padding?: number; background?: boolean }
-            ) => Promise<string | SVGElement> | string | SVGElement;
-          }
-        ).getSvg;
-        if (typeof maybeGetSvg === "function") {
-          const res = await maybeGetSvg(undefined, {
-            padding: 16,
-            background: false,
-          });
-          if (typeof res === "string") {
-            const blob = new Blob([res], { type: "image/svg+xml" });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `tldraw-canvas-${Date.now()}.svg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-            return null;
-          }
-          return res as SVGElement;
-        }
-        throw new Error("No compatible TLDraw SVG export method available");
-      })();
-
-      if (elFallback) {
-        const svgString = new XMLSerializer().serializeToString(elFallback);
-        const blob = new Blob([svgString], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `tldraw-canvas-${Date.now()}.svg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
+      throw new Error("No compatible TLDraw export method available");
     } catch (error) {
-      console.error("Export SVG failed:", error);
+      console.error("Export drawing PNG failed:", error);
     }
   }, [tldrawEditorRef]);
 
@@ -444,13 +642,13 @@ const AnnotatedTextEditor: FC<AnnotatedEditorProps> = ({
             📷 Export PNG
           </button>
           <button
-            onClick={handleExportSvg}
+            onClick={handleExportDrawingPng}
             className='px-3 py-1 text-sm bg-gray-700 hover:bg-gray-800 disabled:bg-gray-400 text-white rounded transition-colors'
-            aria-label='Export drawing as SVG'
-            title='Export drawing as SVG'
+            aria-label='Export drawing as PNG'
+            title='Export drawing as PNG'
             disabled={modeState.isTransitioning || isSaving || isAnalyzing}
           >
-            🖼️ Export SVG
+            🖼️ Export Drawing PNG
           </button>
           <button
             onClick={clearContent}
